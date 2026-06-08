@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
-import { readImageBuffer, frameUrl, isBlobUrl } from '@/lib/blob-storage'
+import { frameUrl, readImageBuffer } from '@/lib/blob-storage'
 import { createFormattedImage } from '@/lib/formatted-image'
-import fs from 'fs'
-import path from 'path'
 
 export const runtime = 'nodejs'
 
@@ -30,21 +28,10 @@ export async function GET(
   }
 
   try {
-    let rawBuffer: Buffer
-    if (isBlobUrl(athlete.frames_dir)) {
-      rawBuffer = await readImageBuffer(frameUrl(athlete.frames_dir, idx))
-    } else {
-      const framePath = path.join(
-        athlete.frames_dir,
-        `frame_${String(idx).padStart(2, '0')}.jpg`,
-      )
-      if (!fs.existsSync(framePath)) {
-        return NextResponse.json({ error: 'Frame file not found' }, { status: 404 })
-      }
-      rawBuffer = fs.readFileSync(framePath)
-    }
-
+    const framePath = frameUrl(athlete.frames_dir, idx)
+    const rawBuffer = await readImageBuffer(framePath)
     const { heat } = athlete
+
     const formatted = await createFormattedImage(rawBuffer, {
       firstName:    athlete.first_name,
       lastName:     athlete.last_name,

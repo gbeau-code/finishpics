@@ -18,11 +18,11 @@ export async function GET(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  if (!athlete.image_path || !(await imageExists(athlete.image_path))) {
+  if (!await imageExists(athlete.image_path)) {
     return NextResponse.json({ error: 'Image not found' }, { status: 404 })
   }
 
-  const rawBuffer = await readImageBuffer(athlete.image_path)
+  const rawBuffer = await readImageBuffer(athlete.image_path!)
   const { heat } = athlete
   const formatted = await createFormattedImage(rawBuffer, {
     firstName:    athlete.first_name,

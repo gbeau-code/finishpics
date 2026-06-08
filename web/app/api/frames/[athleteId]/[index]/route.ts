@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
-import { readImageBuffer, frameUrl, isBlobUrl } from '@/lib/blob-storage'
-import fs from 'fs'
-import path from 'path'
+import { frameUrl, readImageBuffer } from '@/lib/blob-storage'
 
 export const runtime = 'nodejs'
 
@@ -29,27 +27,15 @@ export async function GET(
   }
 
   try {
-    let buffer: Buffer
-    if (isBlobUrl(athlete.frames_dir)) {
-      // Blob storage: construct URL from prefix
-      buffer = await readImageBuffer(frameUrl(athlete.frames_dir, idx))
-    } else {
-      // Local filesystem
-      const framePath = path.join(athlete.frames_dir, `frame_${String(idx).padStart(2, '0')}.jpg`)
-      if (!fs.existsSync(framePath)) {
-        return NextResponse.json({ error: 'Frame file not found' }, { status: 404 })
-      }
-      buffer = fs.readFileSync(framePath)
-    }
-
+    const framePath = frameUrl(athlete.frames_dir, idx)
+    const buffer = await readImageBuffer(framePath)
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'image/jpeg',
         'Cache-Control': 'public, max-age=3600',
       },
     })
-  } catch (err) {
-    console.error('Frame serve error:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Frame not found' }, { status: 404 })
   }
 }
