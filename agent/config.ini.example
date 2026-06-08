@@ -1,0 +1,17 @@
+[meet]
+name = Spring Invitational 2026
+date = 2026-06-06
+location = City, State
+company_name = Your Timing Company
+
+[finishlynx]
+lif_dir = C:\Meets
+rc_host = 127.0.0.1
+rc_port = 16000
+listen_host = 0.0.0.0
+listen_port = 16002
+identilynx_window = 2
+
+[api]
+url = https://your-site.vercel.app
+key = your-api-key-here

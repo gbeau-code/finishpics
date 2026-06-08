@@ -1,0 +1,27 @@
+﻿# Data (local dev only — never commit images or db)
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+agent/fonts/
+agent/config.ini
+
+# Next.js
+web/.next/
+web/node_modules/
+web/.env.local
+
+# Logs
+*.log
+
+# TypeScript build artifacts
+web/tsconfig.tsbuildinfo
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
