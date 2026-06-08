@@ -1,9 +1,19 @@
 import sharp from 'sharp'
+import fs from 'fs'
 import { ROBOTO_CONDENSED_BOLD_B64 } from './font-data'
+
+let fontReady = false
+function ensureFont() {
+  if (fontReady) return
+  const boldPath = '/tmp/RobotoCondensed-Bold.ttf'
+  if (!fs.existsSync(boldPath))
+    fs.writeFileSync(boldPath, Buffer.from(ROBOTO_CONDENSED_BOLD_B64, 'base64'))
+  fontReady = true
+}
 
 export async function addWatermark(imageBuffer: Buffer): Promise<Buffer> {
   const { width = 800, height = 200 } = await sharp(imageBuffer).metadata()
-  const fontB64 = ROBOTO_CONDENSED_BOLD_B64
+  ensureFont()
 
   // Build SVG with repeated diagonal text
   const texts: string[] = []
@@ -16,7 +26,7 @@ export async function addWatermark(imageBuffer: Buffer): Promise<Buffer> {
   }
 
   const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-  <defs><style>@font-face { font-family: 'RobotoCondensed'; font-weight: bold; src: url('data:font/truetype;base64,${fontB64}') format('truetype'); }</style></defs>
+  <defs><style>@font-face { font-family: 'RobotoCondensed'; font-weight: bold; src: url('file:///tmp/RobotoCondensed-Bold.ttf') format('truetype'); }</style></defs>
   ${texts.join('')}</svg>`
 
   return sharp(imageBuffer)

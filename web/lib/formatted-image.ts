@@ -1,6 +1,20 @@
 import sharp from 'sharp'
+import fs from 'fs'
 import { formatTime, formatRound } from './format'
 import { ROBOTO_CONDENSED_BOLD_B64, ROBOTO_CONDENSED_REGULAR_B64 } from './font-data'
+
+// Write fonts to /tmp once per Lambda instance so librsvg can load via file://
+let fontsReady = false
+function ensureFonts() {
+  if (fontsReady) return
+  const boldPath = '/tmp/RobotoCondensed-Bold.ttf'
+  const regPath  = '/tmp/RobotoCondensed-Regular.ttf'
+  if (!fs.existsSync(boldPath))
+    fs.writeFileSync(boldPath, Buffer.from(ROBOTO_CONDENSED_BOLD_B64, 'base64'))
+  if (!fs.existsSync(regPath))
+    fs.writeFileSync(regPath, Buffer.from(ROBOTO_CONDENSED_REGULAR_B64, 'base64'))
+  fontsReady = true
+}
 
 export interface FormattedImageOptions {
   firstName: string
@@ -72,8 +86,7 @@ function buildSvgStrip(width: number, opts: FormattedImageOptions): string {
     ? escapeXml(companyName.toUpperCase())
     : 'IN STRIDE TIMING'
 
-  const fontRegB64  = ROBOTO_CONDENSED_REGULAR_B64
-  const fontBoldB64 = ROBOTO_CONDENSED_BOLD_B64
+  ensureFonts()
 
   return `<svg width="${W}" height="${STRIP_H}" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -81,12 +94,12 @@ function buildSvgStrip(width: number, opts: FormattedImageOptions): string {
       @font-face {
         font-family: 'RobotoCondensed';
         font-weight: normal;
-        src: url('data:font/truetype;base64,${fontRegB64}') format('truetype');
+        src: url('file:///tmp/RobotoCondensed-Regular.ttf') format('truetype');
       }
       @font-face {
         font-family: 'RobotoCondensed';
         font-weight: bold;
-        src: url('data:font/truetype;base64,${fontBoldB64}') format('truetype');
+        src: url('file:///tmp/RobotoCondensed-Bold.ttf') format('truetype');
       }
     </style>
   </defs>
