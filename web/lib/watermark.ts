@@ -1,19 +1,9 @@
 import sharp from 'sharp'
-import fs from 'fs'
-import path from 'path'
-
-let _fontBoldB64: string | null = null
-function getFontBoldBase64(): string {
-  if (!_fontBoldB64) {
-    const p = path.join(process.cwd(), 'public', 'fonts', 'RobotoCondensed-Bold.ttf')
-    _fontBoldB64 = fs.readFileSync(p).toString('base64')
-  }
-  return _fontBoldB64
-}
+import { ROBOTO_CONDENSED_BOLD_B64 } from './font-data'
 
 export async function addWatermark(imageBuffer: Buffer): Promise<Buffer> {
   const { width = 800, height = 200 } = await sharp(imageBuffer).metadata()
-  const fontB64 = getFontBoldBase64()
+  const fontB64 = ROBOTO_CONDENSED_BOLD_B64
 
   // Build SVG with repeated diagonal text
   const texts: string[] = []

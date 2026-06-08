@@ -1,26 +1,6 @@
 import sharp from 'sharp'
-import fs from 'fs'
-import path from 'path'
 import { formatTime, formatRound } from './format'
-
-// Load fonts once and cache them as base64 for SVG embedding
-let _fontRegularB64: string | null = null
-let _fontBoldB64: string | null = null
-
-function getFontBase64(variant: 'Regular' | 'Bold'): string {
-  if (variant === 'Bold') {
-    if (!_fontBoldB64) {
-      const p = path.join(process.cwd(), 'public', 'fonts', 'RobotoCondensed-Bold.ttf')
-      _fontBoldB64 = fs.readFileSync(p).toString('base64')
-    }
-    return _fontBoldB64
-  }
-  if (!_fontRegularB64) {
-    const p = path.join(process.cwd(), 'public', 'fonts', 'RobotoCondensed-Regular.ttf')
-    _fontRegularB64 = fs.readFileSync(p).toString('base64')
-  }
-  return _fontRegularB64
-}
+import { ROBOTO_CONDENSED_BOLD_B64, ROBOTO_CONDENSED_REGULAR_B64 } from './font-data'
 
 export interface FormattedImageOptions {
   firstName: string
@@ -92,8 +72,8 @@ function buildSvgStrip(width: number, opts: FormattedImageOptions): string {
     ? escapeXml(companyName.toUpperCase())
     : 'IN STRIDE TIMING'
 
-  const fontRegB64  = getFontBase64('Regular')
-  const fontBoldB64 = getFontBase64('Bold')
+  const fontRegB64  = ROBOTO_CONDENSED_REGULAR_B64
+  const fontBoldB64 = ROBOTO_CONDENSED_BOLD_B64
 
   return `<svg width="${W}" height="${STRIP_H}" xmlns="http://www.w3.org/2000/svg">
   <defs>
