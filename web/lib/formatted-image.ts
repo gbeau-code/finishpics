@@ -88,26 +88,26 @@ function buildSvgStrip(width: number, opts: FormattedImageOptions): string {
   <rect x="${W - 4}" y="4" width="4" height="${STRIP_H - 8}" fill="${BRAND_BLUE}" opacity="0.7"/>
 
   <!-- captured by (top-right) -->
-  <text x="${W - 20}" y="38" font-family="Arial" font-size="12" text-anchor="end">
-    <tspan fill="#3D6080">Captured by&#160;</tspan><tspan font-family="Arial Black,Arial" font-weight="900" fill="${BRAND_BLUE}">${capturedByName}</tspan>
+  <text x="${W - 20}" y="38" font-family="sans-serif" font-size="12" text-anchor="end">
+    <tspan fill="#3D6080">Captured by&#160;</tspan><tspan font-weight="bold" fill="${BRAND_BLUE}">${capturedByName}</tspan>
   </text>
 
   <!-- athlete name -->
-  <text x="24" y="56" font-family="Arial Black,Arial" font-size="30" font-weight="900"
+  <text x="24" y="56" font-family="sans-serif" font-size="30" font-weight="bold"
         fill="white" letter-spacing="0.3">${fullName}</text>
 
   <!-- affiliation (team · bib) -->
-  ${affLabel ? `<text x="24" y="80" font-family="Arial" font-size="16" fill="#7EB8F7">${affLabel}</text>` : ''}
+  ${affLabel ? `<text x="24" y="80" font-family="sans-serif" font-size="16" fill="#7EB8F7">${affLabel}</text>` : ''}
 
   <!-- event line -->
-  <text x="24" y="104" font-family="Arial" font-size="15" fill="#5B8AB5">${eventLabel}</text>
+  <text x="24" y="104" font-family="sans-serif" font-size="15" fill="#5B8AB5">${eventLabel}</text>
 
   <!-- meet line -->
-  <text x="24" y="130" font-family="Arial" font-size="14" fill="#4A7090">${meetLabel}</text>
+  <text x="24" y="130" font-family="sans-serif" font-size="14" fill="#4A7090">${meetLabel}</text>
 
   <!-- finish time (right, monospace) -->
   ${timeLabel ? `
-  <text x="${W - 20}" y="114" font-family="Courier New,Courier,monospace" font-size="34"
+  <text x="${W - 20}" y="114" font-family="monospace" font-size="34"
         font-weight="bold" fill="white" text-anchor="end">${timeLabel}</text>` : ''}
 
 </svg>`
