@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
 import {
   getOrCreateMeet,
@@ -16,6 +16,7 @@ import {
 } from '@/lib/blob-storage'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 interface AthleteInput {
   bib: string
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
     const heatRec   = await findOrCreateHeat(meetRec.id, event_num, round, heat, event_name)
 
     // ---------------------------------------------------------------------------
-    // Save athlete image — blob in production, local disk in dev
+    // Save athlete image â€” blob in production, local disk in dev
     // ---------------------------------------------------------------------------
     let imagePath: string
 

@@ -3,6 +3,7 @@ import { updateHeatStatus, deleteHeat } from '@/lib/database'
 import { requireAdmin } from '@/lib/admin-auth'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function PATCH(
   request: NextRequest,

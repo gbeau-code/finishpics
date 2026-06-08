@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { cleanupOldMeets } from '@/lib/database'
 import { requireAdmin } from '@/lib/admin-auth'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   const authError = requireAdmin(request)
