@@ -5,5 +5,9 @@ const nextConfig = {
     // safe to ignore until those integrations are implemented.
     ignoreBuildErrors: true,
   },
+  // Ensure font files are bundled with API route serverless functions
+  outputFileTracingIncludes: {
+    '/api/**': ['./public/fonts/**'],
+  },
 }
 module.exports = nextConfig
