@@ -1,3 +1,3 @@
-import Stripe from 'stripe'
-
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+// Stripe integration — not yet active
+// Install 'stripe' package and implement when payments are ready
+export const stripe = null
