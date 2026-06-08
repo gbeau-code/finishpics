@@ -5,6 +5,7 @@ import { addWatermark } from '@/lib/watermark'
 import { createFormattedImage } from '@/lib/formatted-image'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function GET(
   _request: NextRequest,

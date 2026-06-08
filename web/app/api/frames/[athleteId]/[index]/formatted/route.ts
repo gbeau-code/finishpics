@@ -4,6 +4,7 @@ import { frameUrl, readImageBuffer } from '@/lib/blob-storage'
 import { createFormattedImage } from '@/lib/formatted-image'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function GET(
   _request: NextRequest,
