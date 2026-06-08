@@ -420,6 +420,23 @@ class App(ctk.CTk):
         field("IdentiLynx Window","identilynx_window","finishlynx", "2",
               choices=["1","2","3","4"])
 
+        # IdentiLynx enable/disable checkbox
+        r_idl = nxt()
+        _FieldLabel(parent, "IdentiLynx Frames", self.f_sm).grid(
+            row=r_idl, column=0, padx=(24, 12), pady=6, sticky="e")
+        self._idl_var = ctk.BooleanVar(
+            value=self.cfg.getboolean("finishlynx", "use_identilynx", fallback=True))
+        ctk.CTkCheckBox(
+            parent,
+            text="Enable IdentiLynx frame uploads",
+            variable=self._idl_var,
+            font=self.f_body,
+            text_color=WHITE,
+            fg_color=BLUE,
+            hover_color=BLUE_HV,
+            border_color=BORDER,
+        ).grid(row=r_idl, column=1, padx=(0, 24), pady=6, sticky="w")
+
         # ─ API ─
         section("API")
         field("Server URL", "url", "api", "http://localhost:3000")
@@ -504,7 +521,15 @@ class App(ctk.CTk):
             if not self.cfg.has_section(section):
                 self.cfg.add_section(section)
             self.cfg.set(section, key, var.get())
+        # Save IdentiLynx toggle
+        if not self.cfg.has_section("finishlynx"):
+            self.cfg.add_section("finishlynx")
+        self.cfg.set("finishlynx", "use_identilynx",
+                     "true" if self._idl_var.get() else "false")
         _write_config(self.cfg)
+        # Live-update running processor
+        if self._processor:
+            self._processor.identilynx_enabled = self._idl_var.get()
         messagebox.showinfo(
             "Settings Saved",
             "Settings written to config.ini.\n"

@@ -133,7 +133,8 @@ class HeatProcessor:
         self.lif_dir          = cfg.get('finishlynx', 'lif_dir')
         self.rc_host          = cfg.get('finishlynx', 'rc_host')
         self.rc_port          = cfg.getint('finishlynx', 'rc_port')
-        self.identilynx_window = cfg.getint('finishlynx', 'identilynx_window', fallback=2)
+        self.identilynx_window  = cfg.getint('finishlynx', 'identilynx_window', fallback=2)
+        self.identilynx_enabled = cfg.getboolean('finishlynx', 'use_identilynx', fallback=True)
         self.api_url   = cfg.get('api', 'url')
         self.api_key   = cfg.get('api', 'key')
         self.state     = state
@@ -213,23 +214,24 @@ class HeatProcessor:
                 fail_count += 1
                 continue
 
-            # --- IdentiLynx frames (best-effort; skipped if window absent) ---
+            # --- IdentiLynx frames (best-effort; skipped if disabled or window absent) ---
             identilynx_frames: List[bytes] = []
-            video_exported = export_athlete_video(
-                host=self.rc_host,
-                port=self.rc_port,
-                filename_stem=jpeg_stem,
-                race_seconds=athlete['finish_time'],
-                window=self.identilynx_window,
-            )
-            if video_exported:
-                avi_candidate = Path(self.lif_dir) / f"{jpeg_stem}.avi"
-                if wait_for_jpeg(avi_candidate, timeout=AVI_WAIT_SECS):
-                    identilynx_frames = extract_frames(avi_candidate)
-                    if not identilynx_frames:
-                        logger.warning("  Bib %s: AVI found but no frames extracted", bib)
-                else:
-                    logger.warning("  Bib %s: AVI did not appear within %.0fs — skipping frames", bib, AVI_WAIT_SECS)
+            if self.identilynx_enabled:
+                video_exported = export_athlete_video(
+                    host=self.rc_host,
+                    port=self.rc_port,
+                    filename_stem=jpeg_stem,
+                    race_seconds=athlete['finish_time'],
+                    window=self.identilynx_window,
+                )
+                if video_exported:
+                    avi_candidate = Path(self.lif_dir) / f"{jpeg_stem}.avi"
+                    if wait_for_jpeg(avi_candidate, timeout=AVI_WAIT_SECS):
+                        identilynx_frames = extract_frames(avi_candidate)
+                        if not identilynx_frames:
+                            logger.warning("  Bib %s: AVI found but no frames extracted", bib)
+                    else:
+                        logger.warning("  Bib %s: AVI did not appear within %.0fs — skipping frames", bib, AVI_WAIT_SECS)
 
             metadata = {
                 'meet_name':     self.meet_name,
