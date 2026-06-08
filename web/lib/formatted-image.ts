@@ -1,5 +1,26 @@
 import sharp from 'sharp'
+import fs from 'fs'
+import path from 'path'
 import { formatTime, formatRound } from './format'
+
+// Load fonts once and cache them as base64 for SVG embedding
+let _fontRegularB64: string | null = null
+let _fontBoldB64: string | null = null
+
+function getFontBase64(variant: 'Regular' | 'Bold'): string {
+  if (variant === 'Bold') {
+    if (!_fontBoldB64) {
+      const p = path.join(process.cwd(), 'public', 'fonts', 'RobotoCondensed-Bold.ttf')
+      _fontBoldB64 = fs.readFileSync(p).toString('base64')
+    }
+    return _fontBoldB64
+  }
+  if (!_fontRegularB64) {
+    const p = path.join(process.cwd(), 'public', 'fonts', 'RobotoCondensed-Regular.ttf')
+    _fontRegularB64 = fs.readFileSync(p).toString('base64')
+  }
+  return _fontRegularB64
+}
 
 export interface FormattedImageOptions {
   firstName: string
@@ -71,7 +92,25 @@ function buildSvgStrip(width: number, opts: FormattedImageOptions): string {
     ? escapeXml(companyName.toUpperCase())
     : 'IN STRIDE TIMING'
 
+  const fontRegB64  = getFontBase64('Regular')
+  const fontBoldB64 = getFontBase64('Bold')
+
   return `<svg width="${W}" height="${STRIP_H}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @font-face {
+        font-family: 'RobotoCondensed';
+        font-weight: normal;
+        src: url('data:font/truetype;base64,${fontRegB64}') format('truetype');
+      }
+      @font-face {
+        font-family: 'RobotoCondensed';
+        font-weight: bold;
+        src: url('data:font/truetype;base64,${fontBoldB64}') format('truetype');
+      }
+    </style>
+  </defs>
+
   <!-- background -->
   <rect width="${W}" height="${STRIP_H}" fill="${BRAND_NAVY}"/>
 
@@ -88,26 +127,26 @@ function buildSvgStrip(width: number, opts: FormattedImageOptions): string {
   <rect x="${W - 4}" y="4" width="4" height="${STRIP_H - 8}" fill="${BRAND_BLUE}" opacity="0.7"/>
 
   <!-- captured by (top-right) -->
-  <text x="${W - 20}" y="38" font-family="sans-serif" font-size="12" text-anchor="end">
+  <text x="${W - 20}" y="38" font-family="RobotoCondensed" font-size="12" text-anchor="end">
     <tspan fill="#3D6080">Captured by&#160;</tspan><tspan font-weight="bold" fill="${BRAND_BLUE}">${capturedByName}</tspan>
   </text>
 
   <!-- athlete name -->
-  <text x="24" y="56" font-family="sans-serif" font-size="30" font-weight="bold"
+  <text x="24" y="56" font-family="RobotoCondensed" font-size="30" font-weight="bold"
         fill="white" letter-spacing="0.3">${fullName}</text>
 
   <!-- affiliation (team · bib) -->
-  ${affLabel ? `<text x="24" y="80" font-family="sans-serif" font-size="16" fill="#7EB8F7">${affLabel}</text>` : ''}
+  ${affLabel ? `<text x="24" y="80" font-family="RobotoCondensed" font-size="16" fill="#7EB8F7">${affLabel}</text>` : ''}
 
   <!-- event line -->
-  <text x="24" y="104" font-family="sans-serif" font-size="15" fill="#5B8AB5">${eventLabel}</text>
+  <text x="24" y="104" font-family="RobotoCondensed" font-size="15" fill="#5B8AB5">${eventLabel}</text>
 
   <!-- meet line -->
-  <text x="24" y="130" font-family="sans-serif" font-size="14" fill="#4A7090">${meetLabel}</text>
+  <text x="24" y="130" font-family="RobotoCondensed" font-size="14" fill="#4A7090">${meetLabel}</text>
 
   <!-- finish time (right, monospace) -->
   ${timeLabel ? `
-  <text x="${W - 20}" y="114" font-family="monospace" font-size="34"
+  <text x="${W - 20}" y="114" font-family="RobotoCondensed" font-size="34"
         font-weight="bold" fill="white" text-anchor="end">${timeLabel}</text>` : ''}
 
 </svg>`
