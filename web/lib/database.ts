@@ -389,7 +389,7 @@ export async function getAllMeetsWithHeats(): Promise<MeetWithHeats[]> {
   const sql = getDb()
 
   const meetRows = await sql`SELECT * FROM meets ORDER BY created_at DESC`
-  const heatRows = await sql`SELECT * FROM heats ORDER BY event_num::int ASC, heat_num::int ASC`
+  const heatRows = await sql`SELECT * FROM heats ORDER BY created_at ASC`
   const athleteRows = await sql`SELECT * FROM athletes`
 
   return (meetRows as Meet[]).map((meet) => {
