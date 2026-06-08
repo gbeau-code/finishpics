@@ -2,7 +2,7 @@
  * blob-storage.ts
  *
  * Dual-mode image storage:
- *   - When BLOB_READ_WRITE_TOKEN is set (Vercel production): store in Vercel Blob
+ *   - When BLOB_READ_WRITE_TOKEN or BLOB_STORE_ID is set (Vercel production): store in Vercel Blob
  *   - Otherwise (local dev): store on the local filesystem
  *
  * All callers use the same API — they just pass/receive image paths or blob URLs.
@@ -11,7 +11,8 @@
 import fs from 'fs'
 import path from 'path'
 
-export const IS_BLOB = () => !!process.env.BLOB_READ_WRITE_TOKEN
+export const IS_BLOB = () =>
+  !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID)
 
 // ---------------------------------------------------------------------------
 // Key / pathname helpers (shared naming convention for both modes)
