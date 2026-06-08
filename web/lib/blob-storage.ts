@@ -72,6 +72,7 @@ export async function uploadImage(
     const { url } = await put(key, data, {
       access:           'public',
       addRandomSuffix:  false,
+      allowOverwrite:   true,
       contentType:      'image/jpeg',
     })
     return url
