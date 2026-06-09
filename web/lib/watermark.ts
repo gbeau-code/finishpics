@@ -23,7 +23,7 @@ export async function addWatermark(imageBuffer: Buffer): Promise<Buffer> {
   try {
     tileBuf = await sharp({
       text: {
-        text: `<span foreground="white" font_desc="Bold 20">${tileText}</span>`,
+        text: `<span foreground="#1A1A1A" font_desc="Bold 22">${tileText}</span>`,
         fontfile,
         rgba: true,
         dpi: 96,
@@ -35,13 +35,13 @@ export async function addWatermark(imageBuffer: Buffer): Promise<Buffer> {
   }
 
   const tileMeta = await sharp(tileBuf).metadata()
-  const tw = tileMeta.width  ?? 260
-  const th = tileMeta.height ?? 28
+  const tw = tileMeta.width  ?? 280
+  const th = tileMeta.height ?? 30
 
   // Semi-transparent version of the tile
   const fadedTile = await sharp(tileBuf)
     .composite([{
-      input: Buffer.from([0, 0, 0, Math.round(255 * 0.45)]),
+      input: Buffer.from([0, 0, 0, Math.round(255 * 0.55)]),
       raw: { width: 1, height: 1, channels: 4 },
       tile: true,
       blend: 'dest-in',
