@@ -40,6 +40,12 @@ export default function RootLayout({
           <p>
             &copy; {new Date().getFullYear()} FinishPics &mdash; Track &amp; Field Photo-Finish Images
           </p>
+          <p className="mt-1">
+            Questions?{' '}
+            <a href="mailto:support@finishpics.com" className="text-blue-500 hover:text-blue-600 transition-colors">
+              support@finishpics.com
+            </a>
+          </p>
         </footer>
       </body>
     </html>

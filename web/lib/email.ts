@@ -148,6 +148,7 @@ export async function sendPurchaseEmail(params: PurchaseEmailParams): Promise<vo
   <tr><td style="background:#f8fafc;border-top:1px solid #e5e7eb;border-radius:0 0 12px 12px;padding:18px 32px;">
     <p style="margin:0;font-size:11px;color:#9ca3af;line-height:1.5;">
       Save this email — your download links don't expire and will work on any device.<br>
+      Questions? Reply to this email or contact <a href="mailto:support@finishpics.com" style="color:#9ca3af;">support@finishpics.com</a><br>
       Powered by <a href="https://www.finishpics.com" style="color:#9ca3af;">FinishPics</a> &middot; In Stride Timing
     </p>
   </td></tr>

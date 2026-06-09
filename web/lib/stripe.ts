@@ -27,14 +27,14 @@ export const TIERS = {
     description: 'High-resolution raw photo-finish JPEG — no meet or race info included',
   },
   enhanced: {
-    cents:       700,
-    label:       '$7.00',
+    cents:       1000,
+    label:       '$10.00',
     name:        'Photo Package',
     description: 'Raw + formatted photo-finish image with meet and race info included',
   },
   full: {
-    cents:       1000,
-    label:       '$10.00',
+    cents:       2000,
+    label:       '$20.00',
     name:        'Full Package',
     description: 'Raw + formatted photo-finish image, all finish-line camera images (raw & formatted), and animated boomerang',
   },
