@@ -47,8 +47,13 @@ export async function POST(request: NextRequest) {
 
     // total_frames is sent by the agent so we always write the correct count
     // to the DB even when frames arrive in multiple batches.
-    const totalFramesRaw = formData.get('total_frames')
-    const totalFrames    = totalFramesRaw ? parseInt(totalFramesRaw as string, 10) : null
+    // Clamped to MAX_FRAMES to prevent DB abuse via inflated values.
+    const MAX_FRAMES        = 100
+    const totalFramesRaw    = formData.get('total_frames')
+    const totalFramesParsed = totalFramesRaw ? parseInt(totalFramesRaw as string, 10) : null
+    const totalFrames       = totalFramesParsed && totalFramesParsed > 0
+      ? Math.min(totalFramesParsed, MAX_FRAMES)
+      : null
 
     const frameKeys = [...formData.keys()]
       .filter(k => /^frame_\d+$/.test(k))

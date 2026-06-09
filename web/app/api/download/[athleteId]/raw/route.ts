@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
-import { readImageBuffer, imageExists } from '@/lib/blob-storage'
+import { readImageBuffer, imageExists, safeName } from '@/lib/blob-storage'
 import { requirePurchase } from '@/lib/purchases'
 
 export const runtime = 'nodejs'
@@ -34,7 +34,7 @@ export async function GET(
   }
 
   const imageBuffer = await readImageBuffer(athlete.image_path!)
-  const filename    = `FinishPics-${athlete.last_name}-${athlete.bib}-raw.jpg`
+  const filename    = `FinishPics-${safeName(athlete.last_name)}-${safeName(athlete.bib ?? 'nobib')}-raw.jpg`
 
   return new NextResponse(new Uint8Array(imageBuffer), {
     headers: {

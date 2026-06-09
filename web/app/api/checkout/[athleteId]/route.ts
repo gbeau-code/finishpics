@@ -27,10 +27,9 @@ export async function POST(
   // If full tier requested but athlete has no frames, don't mis-sell it
   const tierData = TIERS[tier]
 
-  // Build the base URL from incoming request headers (works on any domain)
-  const proto   = request.headers.get('x-forwarded-proto') ?? 'https'
-  const host    = request.headers.get('host')!
-  const baseUrl = `${proto}://${host}`
+  // Prefer an explicit env var; fall back to request headers (Vercel sets these reliably)
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? `${request.headers.get('x-forwarded-proto') ?? 'https'}://${request.headers.get('host')!}`
 
   const athleteName = `${athlete.first_name} ${athlete.last_name}`
   const meetName    = athlete.heat.meet.name

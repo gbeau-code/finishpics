@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
-import { frameUrl, readImageBuffer } from '@/lib/blob-storage'
+import { frameUrl, readImageBuffer, safeName } from '@/lib/blob-storage'
 import { requirePurchase } from '@/lib/purchases'
 import sharp from 'sharp'
 
@@ -44,7 +44,7 @@ export async function GET(
     const raw       = await readImageBuffer(framePath)
     // Re-encode through Sharp to guarantee a clean, valid JPEG output
     const buffer    = await sharp(raw).jpeg({ quality: 95 }).toBuffer()
-    const filename  = `FinishPics-${athlete.last_name}-frame${idx + 1}-raw.jpg`
+    const filename  = `FinishPics-${safeName(athlete.last_name)}-frame${idx + 1}-raw.jpg`
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {

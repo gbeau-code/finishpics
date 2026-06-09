@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
-import { frameUrl, readImageBuffer } from '@/lib/blob-storage'
+import { frameUrl, readImageBuffer, safeName } from '@/lib/blob-storage'
 import { createFormattedImage } from '@/lib/formatted-image'
 import { requirePurchase } from '@/lib/purchases'
 
@@ -61,7 +61,7 @@ export async function GET(
       companyName:  heat.meet.company_name,
     })
 
-    const filename = `FinishPics-${athlete.last_name}-frame${idx + 1}-formatted.jpg`
+    const filename = `FinishPics-${safeName(athlete.last_name)}-frame${idx + 1}-formatted.jpg`
     return new NextResponse(new Uint8Array(formatted), {
       headers: {
         'Content-Type':        'image/jpeg',

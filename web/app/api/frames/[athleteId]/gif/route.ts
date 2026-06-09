@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
-import { frameUrl, readImageBuffer } from '@/lib/blob-storage'
+import { frameUrl, readImageBuffer, safeName } from '@/lib/blob-storage'
 import { getPurchaseBySession } from '@/lib/purchases'
 import sharp from 'sharp'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -89,7 +89,7 @@ export async function GET(
     encoder.finish()
 
     const gifBuffer = Buffer.from(encoder.out.getData())
-    const filename  = `FinishPics-${athlete.last_name}-boomerang.gif`
+    const filename  = `FinishPics-${safeName(athlete.last_name)}-boomerang.gif`
 
     return new NextResponse(new Uint8Array(gifBuffer), {
       headers: {

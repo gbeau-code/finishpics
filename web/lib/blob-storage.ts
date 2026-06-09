@@ -18,7 +18,7 @@ export const IS_BLOB = () =>
 // Key / pathname helpers (shared naming convention for both modes)
 // ---------------------------------------------------------------------------
 
-function safeName(s: string): string {
+export function safeName(s: string): string {
   return s.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'unknown'
 }
 

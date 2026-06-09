@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
-import { getAthleteWithContext } from '@/lib/database'
+import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -12,6 +12,10 @@ export async function GET(
   const athlete = await getAthleteWithContext(params.athleteId)
   if (!athlete) {
     return NextResponse.json({ error: 'Athlete not found' }, { status: 404 })
+  }
+
+  if (effectiveStatus(athlete.heat) !== 'published') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const videoPath = athlete.video_path
