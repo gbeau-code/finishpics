@@ -25,9 +25,10 @@ const GIF_QUALITY   = 1     // neuquant quality: 1 = best colour, 30 = fastest
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { athleteId: string } },
+  { params }: { params: Promise<{ athleteId: string }> },
 ) {
-  const athlete = await getAthleteWithContext(params.athleteId)
+  const { athleteId } = await params
+  const athlete = await getAthleteWithContext(athleteId)
   if (!athlete || effectiveStatus(athlete.heat) !== 'published') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -41,7 +42,7 @@ export async function GET(
   if (!token) {
     return NextResponse.json({ error: 'Purchase required', code: 'NO_PURCHASE' }, { status: 402 })
   }
-  const purchase = await getPurchaseBySession(token, params.athleteId)
+  const purchase = await getPurchaseBySession(token, athleteId)
   if (!purchase || purchase.tier !== 'full') {
     return NextResponse.json({ error: 'Full package purchase required', code: 'UPGRADE_REQUIRED' }, { status: 402 })
   }

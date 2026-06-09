@@ -7,9 +7,10 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { athleteId: string } }
+  { params }: { params: Promise<{ athleteId: string }> }
 ) {
-  const athlete = await getAthleteWithContext(params.athleteId)
+  const { athleteId } = await params
+  const athlete = await getAthleteWithContext(athleteId)
   if (!athlete) {
     return NextResponse.json({ error: 'Athlete not found' }, { status: 404 })
   }

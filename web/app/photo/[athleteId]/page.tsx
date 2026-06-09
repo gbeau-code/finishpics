@@ -10,8 +10,8 @@ import { getStripe } from '@/lib/stripe'
 export const dynamic = 'force-dynamic'
 
 interface Props {
-  params:       { athleteId: string }
-  searchParams: { session_id?: string }
+  params:       Promise<{ athleteId: string }>
+  searchParams: Promise<{ session_id?: string }>
 }
 
 // ---------------------------------------------------------------------------
@@ -51,7 +51,10 @@ async function resolveSessionPurchase(
 // Page
 // ---------------------------------------------------------------------------
 export default async function PhotoPage({ params, searchParams }: Props) {
-  const athlete = await getAthleteWithContext(params.athleteId)
+  const { athleteId }   = await params
+  const { session_id }  = await searchParams
+
+  const athlete = await getAthleteWithContext(athleteId)
   if (!athlete) notFound()
   if (effectiveStatus(athlete!.heat) !== 'published') notFound()
 
@@ -59,9 +62,9 @@ export default async function PhotoPage({ params, searchParams }: Props) {
   const meet     = heat.meet
 
   // Check for a post-payment session
-  const sessionId = searchParams.session_id ?? null
+  const sessionId = session_id ?? null
   const purchase  = sessionId
-    ? await resolveSessionPurchase(sessionId, params.athleteId)
+    ? await resolveSessionPurchase(sessionId, athleteId)
     : null
 
   const eventLabel = formatEventLabel(heat.event_num, heat.round, heat.heat_num, heat.event_name)
@@ -126,7 +129,7 @@ export default async function PhotoPage({ params, searchParams }: Props) {
 
             {/* Purchase / download section */}
             <PurchaseSection
-              athleteId={params.athleteId}
+              athleteId={athleteId}
               sessionId={sessionId}
               tier={purchase?.tier ?? null}
               hasFrames={hasFrames}
@@ -145,7 +148,7 @@ export default async function PhotoPage({ params, searchParams }: Props) {
             <div className="bg-gray-100 rounded-2xl overflow-hidden shadow-md">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`/api/preview/${params.athleteId}`}
+                src={`/api/preview/${athleteId}`}
                 className="w-full"
                 alt={`Photo-finish image for ${athlete.first_name} ${athlete.last_name}`}
               />
@@ -161,7 +164,7 @@ export default async function PhotoPage({ params, searchParams }: Props) {
                 Finish-line camera &mdash; {athlete.frame_count} image{athlete.frame_count !== 1 ? 's' : ''}
               </p>
               <FrameGallery
-                athleteId={params.athleteId}
+                athleteId={athleteId}
                 frameCount={athlete.frame_count!}
                 lastName={athlete.last_name}
                 token={purchase?.tier === 'full' ? (sessionId ?? null) : null}
@@ -186,8 +189,9 @@ export default async function PhotoPage({ params, searchParams }: Props) {
   )
 }
 
-export async function generateMetadata({ params }: { params: { athleteId: string } }) {
-  const athlete = await getAthleteWithContext(params.athleteId)
+export async function generateMetadata({ params }: { params: Promise<{ athleteId: string }> }) {
+  const { athleteId } = await params
+  const athlete = await getAthleteWithContext(athleteId)
   if (!athlete || effectiveStatus(athlete.heat) !== 'published') {
     return { title: 'Athlete Not Found — FinishPics' }
   }

@@ -9,9 +9,10 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { athleteId: string } }
+  { params }: { params: Promise<{ athleteId: string }> }
 ) {
-  const athlete = await getAthleteWithContext(params.athleteId)
+  const { athleteId } = await params
+  const athlete = await getAthleteWithContext(athleteId)
   if (!athlete) {
     return NextResponse.json({ error: 'Athlete not found' }, { status: 404 })
   }
@@ -22,7 +23,7 @@ export async function GET(
 
   // Formatted image requires enhanced tier or above
   const token    = request.nextUrl.searchParams.get('token')
-  const purchase = await requirePurchase(token, params.athleteId, 'enhanced')
+  const purchase = await requirePurchase(token, athleteId, 'enhanced')
   if (!purchase) {
     return NextResponse.json(
       { error: 'Purchase required', code: 'UPGRADE_REQUIRED' },

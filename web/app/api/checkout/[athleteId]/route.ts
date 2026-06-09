@@ -8,9 +8,10 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { athleteId: string } },
+  { params }: { params: Promise<{ athleteId: string }> },
 ) {
-  const athlete = await getAthleteWithContext(params.athleteId)
+  const { athleteId } = await params
+  const athlete = await getAthleteWithContext(athleteId)
   if (!athlete || effectiveStatus(athlete.heat) !== 'published') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -50,17 +51,17 @@ export async function POST(
         quantity: 1,
       }],
       metadata: {
-        athleteId: params.athleteId,
+        athleteId: athleteId,
         tier,
       },
       // Stripe collects email automatically; receipt is sent by Stripe
-      success_url: `${baseUrl}/photo/${params.athleteId}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url:  `${baseUrl}/photo/${params.athleteId}`,
+      success_url: `${baseUrl}/photo/${athleteId}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url:  `${baseUrl}/photo/${athleteId}`,
     })
 
     // Pre-create the purchase row (webhook will confirm it; this handles race conditions)
     await createPurchase({
-      athlete_id:        params.athleteId,
+      athlete_id:        athleteId,
       tier,
       stripe_session_id: session.id,
       amount_cents:      tierData.cents,

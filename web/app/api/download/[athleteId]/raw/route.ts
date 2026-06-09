@@ -8,9 +8,10 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { athleteId: string } }
+  { params }: { params: Promise<{ athleteId: string }> }
 ) {
-  const athlete = await getAthleteWithContext(params.athleteId)
+  const { athleteId } = await params
+  const athlete = await getAthleteWithContext(athleteId)
   if (!athlete) {
     return NextResponse.json({ error: 'Athlete not found' }, { status: 404 })
   }
@@ -21,7 +22,7 @@ export async function GET(
 
   // Raw photo-finish download requires at minimum a basic purchase
   const token    = request.nextUrl.searchParams.get('token')
-  const purchase = await requirePurchase(token, params.athleteId, 'basic')
+  const purchase = await requirePurchase(token, athleteId, 'basic')
   if (!purchase) {
     return NextResponse.json(
       { error: 'Purchase required', code: 'NO_PURCHASE' },

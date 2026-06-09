@@ -7,10 +7,12 @@ export const dynamic = 'force-dynamic'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { heatId: string } }
+  { params }: { params: Promise<{ heatId: string }> }
 ) {
   const authError = requireAdmin(request)
   if (authError) return authError
+
+  const { heatId } = await params
 
   const body = await request.json().catch(() => null)
   const status = body?.status
@@ -21,7 +23,7 @@ export async function PATCH(
     )
   }
 
-  const heat = await updateHeatStatus(params.heatId, status)
+  const heat = await updateHeatStatus(heatId, status)
   if (!heat) {
     return NextResponse.json({ error: 'Heat not found' }, { status: 404 })
   }
@@ -31,12 +33,14 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { heatId: string } }
+  { params }: { params: Promise<{ heatId: string }> }
 ) {
   const authError = requireAdmin(request)
   if (authError) return authError
 
-  const deleted = await deleteHeat(params.heatId)
+  const { heatId } = await params
+
+  const deleted = await deleteHeat(heatId)
   if (!deleted) {
     return NextResponse.json({ error: 'Heat not found' }, { status: 404 })
   }

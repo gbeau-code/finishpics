@@ -18,8 +18,10 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { athleteId: string } },
+  { params }: { params: Promise<{ athleteId: string }> },
 ) {
+  const { athleteId } = await params
+
   let token: string, email: string
   try {
     const body = await request.json()
@@ -37,13 +39,13 @@ export async function POST(
   }
 
   // Verify the athlete exists and heat is published
-  const athlete = await getAthleteWithContext(params.athleteId)
+  const athlete = await getAthleteWithContext(athleteId)
   if (!athlete || effectiveStatus(athlete.heat) !== 'published') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   // Verify the token is a confirmed purchase for this athlete
-  const purchase = await getPurchaseBySession(token, params.athleteId)
+  const purchase = await getPurchaseBySession(token, athleteId)
   if (!purchase) {
     return NextResponse.json(
       { error: 'No confirmed purchase found for this token' },
@@ -54,7 +56,7 @@ export async function POST(
   try {
     await sendPurchaseEmail({
       to:        email,
-      athleteId: params.athleteId,
+      athleteId: athleteId,
       token,
       tier:      purchase.tier as Tier,
       hasFrames: (athlete.frame_count ?? 0) > 0,

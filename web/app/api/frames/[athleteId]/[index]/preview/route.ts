@@ -9,9 +9,10 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { athleteId: string; index: string } }
+  { params }: { params: Promise<{ athleteId: string; index: string }> }
 ) {
-  const athlete = await getAthleteWithContext(params.athleteId)
+  const { athleteId, index } = await params
+  const athlete = await getAthleteWithContext(athleteId)
   if (!athlete) {
     return NextResponse.json({ error: 'Athlete not found' }, { status: 404 })
   }
@@ -24,7 +25,7 @@ export async function GET(
     return NextResponse.json({ error: 'No frames available' }, { status: 404 })
   }
 
-  const idx = parseInt(params.index, 10)
+  const idx = parseInt(index, 10)
   if (isNaN(idx) || idx < 0 || idx >= athlete.frame_count) {
     return NextResponse.json({ error: 'Frame index out of range' }, { status: 404 })
   }
