@@ -86,19 +86,25 @@ export async function confirmPurchase(
 // Reads
 // ---------------------------------------------------------------------------
 
+// Tier rank — higher number = more access
+const TIER_RANK: Record<Tier, number> = { basic: 0, enhanced: 1, full: 2 }
+
 /**
  * Verify that a request token (Stripe session ID) grants the required tier
  * for a given athlete.  Returns the purchase if valid, null if not.
+ *
+ * Tier hierarchy:  basic (0) < enhanced (1) < full (2)
+ * A 'full' purchase satisfies any minTier requirement.
  */
 export async function requirePurchase(
   token:     string | null,
   athleteId: string,
-  minTier:   'basic' | 'full' = 'basic',
+  minTier:   Tier = 'basic',
 ): Promise<Purchase | null> {
   if (!token) return null
   const purchase = await getPurchaseBySession(token, athleteId)
   if (!purchase) return null
-  if (minTier === 'full' && purchase.tier !== 'full') return null
+  if (TIER_RANK[purchase.tier] < TIER_RANK[minTier]) return null
   return purchase
 }
 

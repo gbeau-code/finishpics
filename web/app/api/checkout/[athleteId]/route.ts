@@ -18,7 +18,7 @@ export async function POST(
   let tier: Tier
   try {
     const body = await request.json()
-    if (body.tier !== 'basic' && body.tier !== 'full') throw new Error('invalid tier')
+    if (body.tier !== 'basic' && body.tier !== 'enhanced' && body.tier !== 'full') throw new Error('invalid tier')
     tier = body.tier as Tier
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })

@@ -24,12 +24,18 @@ export const TIERS = {
     cents:       500,
     label:       '$5.00',
     name:        'Raw Photo-Finish Image',
-    description: 'High-resolution raw photo-finish image (JPEG download)',
+    description: 'High-resolution raw photo-finish JPEG — no meet or race info included',
+  },
+  enhanced: {
+    cents:       700,
+    label:       '$7.00',
+    name:        'Photo Package',
+    description: 'Raw + formatted photo-finish image with meet and race info included',
   },
   full: {
     cents:       1000,
     label:       '$10.00',
-    name:        'Full Photo Package',
+    name:        'Full Package',
     description: 'Raw + formatted photo-finish image, all IdentiLynx frames (raw & formatted), and animated boomerang GIF',
   },
 } as const

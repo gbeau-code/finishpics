@@ -2,20 +2,21 @@
 
 import { useState } from 'react'
 import { TIERS } from '@/lib/stripe'
+import type { Tier } from '@/lib/stripe'
 
 interface Props {
   athleteId:  string
   sessionId:  string | null   // set if this is a post-payment success page
-  tier:       'basic' | 'full' | null  // tier of the confirmed purchase, if any
+  tier:       Tier | null     // tier of the confirmed purchase, if any
   hasFrames:  boolean
   lastName:   string
 }
 
 export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames, lastName }: Props) {
-  const [loading, setLoading] = useState<'basic' | 'full' | null>(null)
+  const [loading, setLoading] = useState<Tier | null>(null)
   const [error,   setError  ] = useState<string | null>(null)
 
-  async function handlePurchase(selectedTier: 'basic' | 'full') {
+  async function handlePurchase(selectedTier: Tier) {
     setLoading(selectedTier)
     setError(null)
     try {
@@ -51,7 +52,7 @@ export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames,
           </p>
         </div>
 
-        {/* Raw photo — available to both tiers */}
+        {/* Raw photo — available to all tiers */}
         <a
           href={`/api/download/${athleteId}/raw?token=${token}`}
           className="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors"
@@ -59,16 +60,19 @@ export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames,
           ↓ Download Raw Photo
         </a>
 
-        {/* Full-tier extras */}
+        {/* Formatted photo — enhanced and full tiers */}
+        {(tier === 'enhanced' || tier === 'full') && (
+          <a
+            href={`/api/download/${athleteId}?token=${token}`}
+            className="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors"
+          >
+            ↓ Download Formatted Photo
+          </a>
+        )}
+
+        {/* Full-tier extras (frames + GIF) */}
         {tier === 'full' && (
           <>
-            <a
-              href={`/api/download/${athleteId}?token=${token}`}
-              className="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors"
-            >
-              ↓ Download Formatted Photo
-            </a>
-
             {hasFrames && (
               <a
                 href={`/api/frames/${athleteId}/gif?token=${token}`}
@@ -90,6 +94,15 @@ export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames,
   }
 
   // ── Pre-purchase: show options ────────────────────────────────────────────
+  // When athlete has frames: basic ($5) + full ($10)
+  // When no frames:          basic ($5) + enhanced ($7)
+  const upgradeT: Tier        = hasFrames ? 'full' : 'enhanced'
+  const upgradeTier           = TIERS[upgradeT]
+
+  const upgradeDescription = hasFrames
+    ? 'Raw + formatted photo-finish, all IdentiLynx frames + boomerang GIF'
+    : 'Raw + formatted photo-finish with meet and race info included'
+
   return (
     <div className="space-y-3">
       {/* Basic tier */}
@@ -104,32 +117,29 @@ export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames,
           </span>
           <span className="text-lg font-bold text-blue-600">{TIERS.basic.label}</span>
         </div>
-        <p className="text-xs text-gray-500">High-resolution JPEG — no watermark</p>
+        <p className="text-xs text-gray-500">High-resolution JPEG — no watermark, no meet or race info</p>
         {loading === 'basic' && (
           <p className="text-xs text-blue-600 mt-1">Redirecting to checkout…</p>
         )}
       </button>
 
-      {/* Full tier */}
+      {/* Enhanced or Full tier depending on hasFrames */}
       <button
-        onClick={() => handlePurchase('full')}
+        onClick={() => handlePurchase(upgradeT)}
         disabled={loading !== null}
         className="block w-full text-left bg-blue-50 border-2 border-blue-300 hover:border-blue-500 rounded-xl p-4 transition-colors disabled:opacity-60 disabled:cursor-wait group"
       >
         <div className="flex items-center justify-between mb-1">
           <span className="font-semibold text-blue-900 group-hover:text-blue-700">
-            Full Package
+            {upgradeTier.name}
             <span className="ml-2 text-xs font-normal bg-blue-600 text-white px-2 py-0.5 rounded-full">
               Best Value
             </span>
           </span>
-          <span className="text-lg font-bold text-blue-600">{TIERS.full.label}</span>
+          <span className="text-lg font-bold text-blue-600">{upgradeTier.label}</span>
         </div>
-        <p className="text-xs text-blue-700">
-          Raw + formatted photo-finish
-          {hasFrames ? ', all IdentiLynx frames + boomerang GIF' : ''}
-        </p>
-        {loading === 'full' && (
+        <p className="text-xs text-blue-700">{upgradeDescription}</p>
+        {loading === upgradeT && (
           <p className="text-xs text-blue-600 mt-1">Redirecting to checkout…</p>
         )}
       </button>

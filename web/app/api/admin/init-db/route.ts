@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     CREATE TABLE IF NOT EXISTS purchases (
       id                        TEXT PRIMARY KEY,
       athlete_id                TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
-      tier                      TEXT NOT NULL CHECK (tier IN ('basic', 'full')),
+      tier                      TEXT NOT NULL CHECK (tier IN ('basic', 'enhanced', 'full')),
       stripe_session_id         TEXT UNIQUE NOT NULL,
       stripe_payment_intent_id  TEXT,
       email                     TEXT,
@@ -71,6 +71,17 @@ export async function POST(request: NextRequest) {
                                   CHECK (status IN ('pending', 'paid')),
       created_at                TEXT NOT NULL
     )
+  `
+
+  // Migrate existing table: update tier check constraint to include 'enhanced'
+  await sql`
+    ALTER TABLE purchases
+      DROP CONSTRAINT IF EXISTS purchases_tier_check
+  `
+  await sql`
+    ALTER TABLE purchases
+      ADD CONSTRAINT purchases_tier_check
+        CHECK (tier IN ('basic', 'enhanced', 'full'))
   `
 
   await sql`

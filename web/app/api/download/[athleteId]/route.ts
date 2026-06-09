@@ -20,9 +20,9 @@ export async function GET(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  // Formatted image requires the full tier
+  // Formatted image requires enhanced tier or above
   const token    = request.nextUrl.searchParams.get('token')
-  const purchase = await requirePurchase(token, params.athleteId, 'full')
+  const purchase = await requirePurchase(token, params.athleteId, 'enhanced')
   if (!purchase) {
     return NextResponse.json(
       { error: 'Purchase required', code: 'UPGRADE_REQUIRED' },
