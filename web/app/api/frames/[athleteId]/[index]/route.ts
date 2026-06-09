@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { frameUrl, readImageBuffer } from '@/lib/blob-storage'
 import { requirePurchase } from '@/lib/purchases'
+import sharp from 'sharp'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -40,7 +41,9 @@ export async function GET(
 
   try {
     const framePath = frameUrl(athlete.frames_dir, idx)
-    const buffer    = await readImageBuffer(framePath)
+    const raw       = await readImageBuffer(framePath)
+    // Re-encode through Sharp to guarantee a clean, valid JPEG output
+    const buffer    = await sharp(raw).jpeg({ quality: 95 }).toBuffer()
     const filename  = `FinishPics-${athlete.last_name}-frame${idx + 1}-raw.jpg`
 
     return new NextResponse(new Uint8Array(buffer), {
