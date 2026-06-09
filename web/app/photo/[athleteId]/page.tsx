@@ -3,23 +3,70 @@ import Link from 'next/link'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { formatRound, formatTime, formatPlace, formatEventLabel } from '@/lib/format'
 import FrameGallery from './FrameGallery'
+import PurchaseSection from './PurchaseSection'
+import { getPurchaseBySession, confirmPurchase } from '@/lib/purchases'
+import { getStripe } from '@/lib/stripe'
 
 export const dynamic = 'force-dynamic'
 
 interface Props {
-  params: { athleteId: string }
+  params:       { athleteId: string }
+  searchParams: { session_id?: string }
 }
 
-export default async function PhotoPage({ params }: Props) {
+// ---------------------------------------------------------------------------
+// Reconcile Stripe session → purchase row
+// Called when user returns from Stripe Checkout.
+// Handles the race where the success page loads before the webhook fires.
+// ---------------------------------------------------------------------------
+async function resolveSessionPurchase(
+  sessionId:  string,
+  athleteId:  string,
+) {
+  // 1. Check DB first (webhook may have already confirmed it)
+  const existing = await getPurchaseBySession(sessionId, athleteId)
+  if (existing) return existing
+
+  // 2. DB row not confirmed yet — verify directly with Stripe
+  try {
+    const session = await getStripe().checkout.sessions.retrieve(sessionId)
+    if (
+      session.payment_status === 'paid' &&
+      session.metadata?.athleteId === athleteId
+    ) {
+      await confirmPurchase(
+        session.id,
+        typeof session.payment_intent === 'string' ? session.payment_intent : null,
+        session.customer_details?.email ?? null,
+      )
+      return await getPurchaseBySession(sessionId, athleteId)
+    }
+  } catch (err) {
+    console.error('Stripe session retrieval failed:', err)
+  }
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+export default async function PhotoPage({ params, searchParams }: Props) {
   const athlete = await getAthleteWithContext(params.athleteId)
   if (!athlete) notFound()
   if (effectiveStatus(athlete!.heat) !== 'published') notFound()
 
   const { heat } = athlete
-  const meet = heat.meet
+  const meet     = heat.meet
+
+  // Check for a post-payment session
+  const sessionId = searchParams.session_id ?? null
+  const purchase  = sessionId
+    ? await resolveSessionPurchase(sessionId, params.athleteId)
+    : null
 
   const eventLabel = formatEventLabel(heat.event_num, heat.round, heat.heat_num, heat.event_name)
   const roundLabel = formatRound(heat.round)
+  const hasFrames  = (athlete.frame_count ?? 0) > 0
 
   const meetDate = new Date(meet.date + 'T00:00:00').toLocaleDateString('en-US', {
     month: 'long', day: 'numeric', year: 'numeric',
@@ -37,7 +84,7 @@ export default async function PhotoPage({ params }: Props) {
       </nav>
 
       <div className="grid lg:grid-cols-5 gap-10">
-        {/* Left: info + download */}
+        {/* Left: info + purchase/download */}
         <div className="lg:col-span-2 order-2 lg:order-1">
           <div className="bg-gray-50 rounded-2xl p-6 mb-6">
             <p className="text-sm font-medium text-gray-500 mb-0.5">{meet.name}</p>
@@ -69,7 +116,7 @@ export default async function PhotoPage({ params }: Props) {
               </div>
             )}
 
-            <div className="space-y-1.5 text-sm text-gray-600">
+            <div className="space-y-1.5 text-sm text-gray-600 mb-6">
               <div className="flex justify-between">
                 <span className="text-gray-400">Event</span>
                 <span className="font-medium">{heat.event_name ?? `Event ${heat.event_num}`}</span>
@@ -89,27 +136,19 @@ export default async function PhotoPage({ params }: Props) {
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Download */}
-          <a
-            href={`/api/download/${params.athleteId}`}
-            className="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors mb-2"
-          >
-            Download Formatted Image
-          </a>
-          <a
-            href={`/api/download/${params.athleteId}/raw`}
-            className="block w-full text-center bg-white hover:bg-gray-50 text-gray-600 font-medium py-2 px-6 rounded-xl border border-gray-200 transition-colors mb-3 text-sm"
-          >
-            Download Raw Photo
-          </a>
-          <p className="text-xs text-center text-gray-400">
-            Local prototype — payment disabled
-          </p>
+            {/* Purchase / download section */}
+            <PurchaseSection
+              athleteId={params.athleteId}
+              sessionId={sessionId}
+              tier={purchase?.tier ?? null}
+              hasFrames={hasFrames}
+              lastName={athlete.last_name}
+            />
+          </div>
         </div>
 
-        {/* Right: watermarked preview + optional video */}
+        {/* Right: watermarked preview + frame gallery */}
         <div className="lg:col-span-3 order-1 lg:order-2 space-y-5">
           <div>
             <div className="bg-gray-100 rounded-2xl overflow-hidden shadow-md">
@@ -121,22 +160,25 @@ export default async function PhotoPage({ params }: Props) {
               />
             </div>
             <p className="mt-2 text-xs text-center text-gray-400">
-              Watermark removed on final download
+              Watermark removed on purchase
             </p>
           </div>
 
-          {athlete.frame_count != null && athlete.frame_count > 0 && (
+          {hasFrames && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                Finish-line camera &mdash; {athlete.frame_count} frames
+                Finish-line camera &mdash; {athlete.frame_count} frame{athlete.frame_count !== 1 ? 's' : ''}
               </p>
               <FrameGallery
                 athleteId={params.athleteId}
-                frameCount={athlete.frame_count}
+                frameCount={athlete.frame_count!}
                 lastName={athlete.last_name}
+                token={purchase?.tier === 'full' ? (sessionId ?? null) : null}
               />
               <p className="mt-2 text-xs text-center text-gray-400">
-                Click any frame to enlarge and download &mdash; captured by IdentiLynx
+                {purchase?.tier === 'full'
+                  ? 'Click any frame to enlarge and download'
+                  : 'Purchase full package to download IdentiLynx frames'}
               </p>
             </div>
           )}
@@ -146,7 +188,7 @@ export default async function PhotoPage({ params }: Props) {
   )
 }
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: { params: { athleteId: string } }) {
   const athlete = await getAthleteWithContext(params.athleteId)
   if (!athlete || effectiveStatus(athlete.heat) !== 'published') {
     return { title: 'Athlete Not Found — FinishPics' }

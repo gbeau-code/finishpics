@@ -3,13 +3,15 @@
 import { useState, useEffect, useCallback } from 'react'
 
 interface Props {
-  athleteId: string
+  athleteId:  string
   frameCount: number
-  lastName: string
+  lastName:   string
+  token:      string | null   // Stripe session ID — null means not yet purchased
 }
 
-export default function FrameGallery({ athleteId, frameCount, lastName }: Props) {
+export default function FrameGallery({ athleteId, frameCount, lastName, token }: Props) {
   const [selected, setSelected] = useState<number | null>(null)
+  const canDownload = !!token
 
   const prev  = useCallback(() => setSelected(i => i != null ? Math.max(0, i - 1) : null), [])
   const next  = useCallback(() => setSelected(i => i != null ? Math.min(frameCount - 1, i + 1) : null), [frameCount])
@@ -26,11 +28,12 @@ export default function FrameGallery({ athleteId, frameCount, lastName }: Props)
     return () => window.removeEventListener('keydown', onKey)
   }, [selected, prev, next, close])
 
-  // Prevent body scroll while lightbox is open
   useEffect(() => {
     document.body.style.overflow = selected !== null ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [selected])
+
+  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : ''
 
   return (
     <>
@@ -77,7 +80,7 @@ export default function FrameGallery({ athleteId, frameCount, lastName }: Props)
               </button>
             </div>
 
-            {/* Image */}
+            {/* Image — preview (watermarked) in lightbox */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={`/api/frames/${athleteId}/${selected}/preview`}
@@ -85,44 +88,48 @@ export default function FrameGallery({ athleteId, frameCount, lastName }: Props)
               className="w-full rounded-2xl shadow-2xl"
             />
 
-            {/* Prev / Next arrows */}
+            {/* Prev / Next */}
             {selected > 0 && (
               <button
                 onClick={prev}
                 className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white rounded-full w-10 h-10 flex items-center justify-center text-2xl transition-colors"
                 aria-label="Previous frame"
-              >
-                ‹
-              </button>
+              >‹</button>
             )}
             {selected < frameCount - 1 && (
               <button
                 onClick={next}
                 className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white rounded-full w-10 h-10 flex items-center justify-center text-2xl transition-colors"
                 aria-label="Next frame"
-              >
-                ›
-              </button>
+              >›</button>
             )}
 
             {/* Download options */}
             <div className="flex gap-3 mt-4 justify-center flex-wrap">
-              <a
-                href={`/api/frames/${athleteId}/${selected}/formatted`}
-                download={`FinishPics-${lastName}-frame${selected + 1}-formatted.jpg`}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
-                onClick={e => e.stopPropagation()}
-              >
-                Download Formatted
-              </a>
-              <a
-                href={`/api/frames/${athleteId}/${selected}`}
-                download={`FinishPics-${lastName}-frame${selected + 1}-raw.jpg`}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-medium transition-colors"
-                onClick={e => e.stopPropagation()}
-              >
-                Download Raw
-              </a>
+              {canDownload ? (
+                <>
+                  <a
+                    href={`/api/frames/${athleteId}/${selected}/formatted${tokenParam}`}
+                    download={`FinishPics-${lastName}-frame${selected + 1}-formatted.jpg`}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    Download Formatted
+                  </a>
+                  <a
+                    href={`/api/frames/${athleteId}/${selected}${tokenParam}`}
+                    download={`FinishPics-${lastName}-frame${selected + 1}-raw.jpg`}
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-medium transition-colors"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    Download Raw
+                  </a>
+                </>
+              ) : (
+                <p className="text-white/50 text-sm">
+                  Purchase the full package to download frames
+                </p>
+              )}
             </div>
           </div>
         </div>

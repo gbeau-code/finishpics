@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { frameUrl, readImageBuffer } from '@/lib/blob-storage'
 import { createFormattedImage } from '@/lib/formatted-image'
+import { requirePurchase } from '@/lib/purchases'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { athleteId: string; index: string } }
 ) {
   const athlete = await getAthleteWithContext(params.athleteId)
@@ -28,10 +29,20 @@ export async function GET(
     return NextResponse.json({ error: 'Frame index out of range' }, { status: 404 })
   }
 
+  // Formatted frame download requires the full tier
+  const token    = request.nextUrl.searchParams.get('token')
+  const purchase = await requirePurchase(token, params.athleteId, 'full')
+  if (!purchase) {
+    return NextResponse.json(
+      { error: 'Purchase required', code: 'UPGRADE_REQUIRED' },
+      { status: 402 },
+    )
+  }
+
   try {
     const framePath = frameUrl(athlete.frames_dir, idx)
     const rawBuffer = await readImageBuffer(framePath)
-    const { heat } = athlete
+    const { heat }  = athlete
 
     const formatted = await createFormattedImage(rawBuffer, {
       firstName:    athlete.first_name,
@@ -50,12 +61,12 @@ export async function GET(
       companyName:  heat.meet.company_name,
     })
 
-    const filename = `FinishPics-${athlete.last_name}-frame${idx + 1}.jpg`
+    const filename = `FinishPics-${athlete.last_name}-frame${idx + 1}-formatted.jpg`
     return new NextResponse(new Uint8Array(formatted), {
       headers: {
-        'Content-Type': 'image/jpeg',
+        'Content-Type':        'image/jpeg',
         'Content-Disposition': `attachment; filename="${filename}"`,
-        'Cache-Control': 'public, max-age=3600',
+        'Cache-Control':       'private, no-store',
       },
     })
   } catch (err) {

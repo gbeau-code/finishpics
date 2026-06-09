@@ -58,5 +58,25 @@ export async function POST(request: NextRequest) {
     )
   `
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS purchases (
+      id                        TEXT PRIMARY KEY,
+      athlete_id                TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+      tier                      TEXT NOT NULL CHECK (tier IN ('basic', 'full')),
+      stripe_session_id         TEXT UNIQUE NOT NULL,
+      stripe_payment_intent_id  TEXT,
+      email                     TEXT,
+      amount_cents              INTEGER NOT NULL,
+      status                    TEXT NOT NULL DEFAULT 'pending'
+                                  CHECK (status IN ('pending', 'paid')),
+      created_at                TEXT NOT NULL
+    )
+  `
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS purchases_athlete_id_idx
+      ON purchases (athlete_id)
+  `
+
   return NextResponse.json({ ok: true, message: 'Database schema initialised' })
 }
