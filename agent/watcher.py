@@ -175,6 +175,13 @@ class HeatProcessor:
 
         ok_count = fail_count = 0
 
+        # ---------------------------------------------------------------
+        # Phase 1 — Fire ALL RC export commands immediately so FinishLynx
+        # can start rendering every image/video in parallel.  No waiting
+        # between athletes here.
+        # ---------------------------------------------------------------
+        pending = []   # athletes whose RC commands succeeded
+
         for athlete in athletes:
             if athlete['finish_time'] is None:
                 logger.info("  Bib %s: no finish time — skipping", athlete['bib'])
@@ -204,18 +211,14 @@ class HeatProcessor:
             )
 
             if not exported:
-                logger.error("  Bib %s %s %s: RC export failed — skipping",
+                logger.error("  Bib %s %s %s: RC image export failed — skipping",
                              bib, athlete['first_name'], athlete['last_name'])
                 fail_count += 1
                 continue
 
-            if not wait_for_jpeg(jpeg_path):
-                logger.error("  Bib %s: JPEG did not appear within %.0fs", bib, JPEG_WAIT_SECS)
-                fail_count += 1
-                continue
-
-            # --- IdentiLynx frames (best-effort; skipped if disabled or window absent) ---
-            identilynx_frames: List[bytes] = []
+            # Fire IdentiLynx video export immediately too — don't wait for the
+            # JPEG first, just queue both exports with FinishLynx now.
+            avi_candidate: Optional[Path] = None
             if self.identilynx_enabled:
                 video_exported = export_athlete_video(
                     host=self.rc_host,
@@ -226,12 +229,42 @@ class HeatProcessor:
                 )
                 if video_exported:
                     avi_candidate = Path(self.lif_dir) / f"{jpeg_stem}.avi"
-                    if wait_for_jpeg(avi_candidate, timeout=AVI_WAIT_SECS):
-                        identilynx_frames = extract_frames(avi_candidate)
-                        if not identilynx_frames:
-                            logger.warning("  Bib %s: AVI found but no frames extracted", bib)
-                    else:
-                        logger.warning("  Bib %s: AVI did not appear within %.0fs — skipping frames", bib, AVI_WAIT_SECS)
+
+            pending.append({
+                'athlete':       athlete,
+                'bib':           bib,
+                'jpeg_path':     jpeg_path,
+                'avi_candidate': avi_candidate,
+            })
+
+        logger.info("RC commands sent for %d athlete(s) — now waiting for exports",
+                    len(pending))
+
+        # ---------------------------------------------------------------
+        # Phase 2 — Wait for each file to appear, then upload.  By the
+        # time we reach the first athlete here, FinishLynx has already had
+        # a head-start on rendering all images simultaneously.
+        # ---------------------------------------------------------------
+        for item in pending:
+            athlete       = item['athlete']
+            bib           = item['bib']
+            jpeg_path     = item['jpeg_path']
+            avi_candidate = item['avi_candidate']
+
+            if not wait_for_jpeg(jpeg_path):
+                logger.error("  Bib %s: JPEG did not appear within %.0fs", bib, JPEG_WAIT_SECS)
+                fail_count += 1
+                continue
+
+            identilynx_frames: List[bytes] = []
+            if avi_candidate is not None:
+                if wait_for_jpeg(avi_candidate, timeout=AVI_WAIT_SECS):
+                    identilynx_frames = extract_frames(avi_candidate)
+                    if not identilynx_frames:
+                        logger.warning("  Bib %s: AVI found but no frames extracted", bib)
+                else:
+                    logger.warning("  Bib %s: AVI did not appear within %.0fs — skipping frames",
+                                   bib, AVI_WAIT_SECS)
 
             metadata = {
                 'meet_name':     self.meet_name,
