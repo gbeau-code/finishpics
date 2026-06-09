@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { formatRound, formatTime, formatPlace, formatEventLabel } from '@/lib/format'
+import { formatRound, formatTime, formatEventLabel } from '@/lib/format'
 
 interface SearchResult {
   id: string
@@ -32,35 +32,6 @@ interface Meet {
   date: string
 }
 
-function PlaceBadge({ place }: { place: number | null }) {
-  if (place == null) return null
-  if (place === 1) {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800">
-        {formatPlace(place)} Place
-      </span>
-    )
-  }
-  if (place === 2) {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-700">
-        {formatPlace(place)} Place
-      </span>
-    )
-  }
-  if (place === 3) {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-orange-100 text-orange-700">
-        {formatPlace(place)} Place
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-50 text-gray-500">
-      {formatPlace(place)} Place
-    </span>
-  )
-}
 
 function AthleteCard({ athlete }: { athlete: SearchResult }) {
   const eventLabel = formatEventLabel(
@@ -78,7 +49,6 @@ function AthleteCard({ athlete }: { athlete: SearchResult }) {
             <h3 className="text-lg font-bold text-gray-900 truncate">
               {athlete.first_name} {athlete.last_name}
             </h3>
-            <PlaceBadge place={athlete.place} />
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-2 flex-wrap">
             {athlete.bib && athlete.bib !== '0' && (

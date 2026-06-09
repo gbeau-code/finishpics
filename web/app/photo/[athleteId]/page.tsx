@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
-import { formatRound, formatTime, formatPlace, formatEventLabel } from '@/lib/format'
+import { formatRound, formatTime, formatEventLabel } from '@/lib/format'
 import FrameGallery from './FrameGallery'
 import PurchaseSection from './PurchaseSection'
 import { getPurchaseBySession, confirmPurchase } from '@/lib/purchases'
@@ -103,19 +103,6 @@ export default async function PhotoPage({ params, searchParams }: Props) {
               {athlete.team && <span className="text-sm text-gray-500">{athlete.team}</span>}
             </div>
 
-            {athlete.place != null && (
-              <div className="mb-3">
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
-                  athlete.place === 1 ? 'bg-yellow-100 text-yellow-800'
-                  : athlete.place === 2 ? 'bg-gray-100 text-gray-700'
-                  : athlete.place === 3 ? 'bg-orange-100 text-orange-700'
-                  : 'bg-gray-50 text-gray-500'
-                }`}>
-                  {formatPlace(athlete.place)} Place
-                </span>
-              </div>
-            )}
-
             <div className="space-y-1.5 text-sm text-gray-600 mb-6">
               <div className="flex justify-between">
                 <span className="text-gray-400">Event</span>
@@ -185,6 +172,13 @@ export default async function PhotoPage({ params, searchParams }: Props) {
           )}
         </div>
       </div>
+      {/* Disclaimer */}
+      <p className="mt-10 text-xs text-center text-gray-400 max-w-2xl mx-auto leading-relaxed">
+        Finish times are captured by photo-finish equipment and are provided for reference only.
+        They do not constitute official results. Official results are determined by meet officials
+        and directors — in the event of a disqualification, protest, or other ruling, officially
+        posted results supersede any information shown here.
+      </p>
     </div>
   )
 }
