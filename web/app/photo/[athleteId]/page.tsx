@@ -144,6 +144,7 @@ export default async function PhotoPage({ params, searchParams }: Props) {
               tier={purchase?.tier ?? null}
               hasFrames={hasFrames}
               lastName={athlete.last_name}
+              purchaseEmail={purchase?.email ?? null}
             />
           </div>
         </div>

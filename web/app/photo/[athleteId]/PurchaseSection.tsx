@@ -5,16 +5,45 @@ import { TIERS } from '@/lib/stripe'
 import type { Tier } from '@/lib/stripe'
 
 interface Props {
-  athleteId:  string
-  sessionId:  string | null   // set if this is a post-payment success page
-  tier:       Tier | null     // tier of the confirmed purchase, if any
-  hasFrames:  boolean
-  lastName:   string
+  athleteId:     string
+  sessionId:     string | null   // set if this is a post-payment success page
+  tier:          Tier | null     // tier of the confirmed purchase, if any
+  hasFrames:     boolean
+  lastName:      string
+  purchaseEmail: string | null   // email from the confirmed purchase, if available
 }
 
-export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames, lastName }: Props) {
-  const [loading, setLoading] = useState<Tier | null>(null)
-  const [error,   setError  ] = useState<string | null>(null)
+export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames, lastName, purchaseEmail }: Props) {
+  const [loading,    setLoading   ] = useState<Tier | null>(null)
+  const [error,      setError     ] = useState<string | null>(null)
+  const [emailInput, setEmailInput] = useState(purchaseEmail ?? '')
+  const [emailSent,  setEmailSent ] = useState(false)
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailError,   setEmailError  ] = useState<string | null>(null)
+
+  async function handleSendEmail() {
+    if (!sessionId || !emailInput.trim()) return
+    setEmailSending(true)
+    setEmailError(null)
+    setEmailSent(false)
+    try {
+      const res  = await fetch(`/api/email-links/${athleteId}`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ token: sessionId, email: emailInput.trim() }),
+      })
+      if (res.ok) {
+        setEmailSent(true)
+      } else {
+        const data = await res.json()
+        setEmailError(data.error ?? 'Could not send email. Please try again.')
+      }
+    } catch {
+      setEmailError('Network error. Please try again.')
+    } finally {
+      setEmailSending(false)
+    }
+  }
 
   async function handlePurchase(selectedTier: Tier) {
     setLoading(selectedTier)
@@ -89,6 +118,38 @@ export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames,
             )}
           </>
         )}
+
+        {/* Email links section */}
+        <div className="border-t border-gray-100 pt-4 mt-2">
+          <p className="text-xs font-semibold text-gray-500 mb-2">
+            Email your download links
+          </p>
+          {emailSent ? (
+            <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+              ✓ Sent! Check your inbox for your download links.
+            </p>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={emailInput}
+                onChange={e => setEmailInput(e.target.value)}
+                placeholder="your@email.com"
+                className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-400"
+              />
+              <button
+                onClick={handleSendEmail}
+                disabled={emailSending || !emailInput.trim()}
+                className="text-sm font-semibold bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-wait whitespace-nowrap"
+              >
+                {emailSending ? 'Sending…' : 'Send'}
+              </button>
+            </div>
+          )}
+          {emailError && (
+            <p className="text-xs text-red-600 mt-1">{emailError}</p>
+          )}
+        </div>
       </div>
     )
   }
