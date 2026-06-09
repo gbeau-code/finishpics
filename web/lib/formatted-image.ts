@@ -1,12 +1,14 @@
 import sharp from 'sharp'
-import { formatTime, formatRound } from './format'
+import fs from 'fs'
+import { formatTime } from './format'
+import { ROBOTO_CONDENSED_BOLD_B64, ROBOTO_CONDENSED_REGULAR_B64 } from './font-data'
 
 export interface FormattedImageOptions {
   firstName: string
   lastName: string
   bib: string
   team: string | null
-  place: number | null        // kept for API compat; no longer shown in strip
+  place: number | null
   finishTime: number | null
   eventName: string | null
   eventNum: string
@@ -18,13 +20,33 @@ export interface FormattedImageOptions {
   companyName?: string | null
 }
 
-const STRIP_H = 170
+const STRIP_H   = 170
+const BRAND_BLUE = '#0C7FEA'
+const BRAND_NAVY = '#0B0D2E'
 
-// In Stride Timing brand colours
-const BRAND_BLUE  = '#0C7FEA'
-const BRAND_NAVY  = '#0B0D2E'   // slightly darker than logo navy for strip bg
+// ---------------------------------------------------------------------------
+// Font bootstrap — write TTFs to /tmp once per Lambda instance
+// ---------------------------------------------------------------------------
 
-function escapeXml(s: string): string {
+let _fontsReady = false
+function ensureFonts(): { bold: string; regular: string } {
+  const bold    = '/tmp/FP-Bold.ttf'
+  const regular = '/tmp/FP-Regular.ttf'
+  if (!_fontsReady) {
+    if (!fs.existsSync(bold))
+      fs.writeFileSync(bold, Buffer.from(ROBOTO_CONDENSED_BOLD_B64, 'base64'))
+    if (!fs.existsSync(regular))
+      fs.writeFileSync(regular, Buffer.from(ROBOTO_CONDENSED_REGULAR_B64, 'base64'))
+    _fontsReady = true
+  }
+  return { bold, regular }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function esc(s: string): string {
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -38,81 +60,110 @@ function meetDateLabel(dateStr: string): string {
   })
 }
 
-function buildSvgStrip(width: number, opts: FormattedImageOptions): string {
+/** Render a single line of text via Pango (sharp text input) → transparent PNG buffer */
+async function textPng(
+  text: string,
+  fontfile: string,
+  ptSize: number,
+  color: string,
+  maxWidth: number,
+): Promise<Buffer> {
+  const markup = `<span foreground="${color}" font_desc="${ptSize}">${esc(text)}</span>`
+  return sharp({
+    text: {
+      text:     markup,
+      fontfile,
+      width:    maxWidth,
+      rgba:     true,
+      dpi:      96,
+    },
+  })
+    .png()
+    .toBuffer()
+}
+
+// ---------------------------------------------------------------------------
+// Strip builder
+// ---------------------------------------------------------------------------
+
+async function buildStrip(width: number, opts: FormattedImageOptions): Promise<Buffer> {
+  const { bold, regular } = ensureFonts()
+  const H = STRIP_H
+
   const {
     firstName, lastName, bib, team, finishTime,
-    eventName, eventNum, round, heatNum, meetName, meetDate, meetLocation,
-    companyName,
+    eventName, eventNum, heatNum, meetName, meetDate, meetLocation, companyName,
   } = opts
 
-  const W          = width
-  const fullName   = escapeXml(`${firstName} ${lastName}`)
-  const timeLabel  = finishTime != null ? escapeXml(formatTime(finishTime)) : ''
-  const eventLabel = escapeXml(
-    eventName
-      ? `${eventName}  ·  Heat ${heatNum}`
-      : `Event ${eventNum}  ·  Heat ${heatNum}`
+  const fullName    = `${firstName} ${lastName}`
+  const hasBib      = bib && bib !== '0'
+  const affParts: string[] = []
+  if (team)   affParts.push(team)
+  if (hasBib) affParts.push(`Bib #${bib}`)
+  const affLabel    = affParts.join('  ·  ')
+
+  const meetParts: string[] = [meetName]
+  if (meetLocation) meetParts.push(meetLocation)
+  meetParts.push(meetDateLabel(meetDate))
+  const meetLabel   = meetParts.join('  ·  ')
+
+  const eventLabel  = eventName
+    ? `${eventName}  ·  Heat ${heatNum}`
+    : `Event ${eventNum}  ·  Heat ${heatNum}`
+
+  const capturedBy  = `Captured by  ${(companyName ?? 'IN STRIDE TIMING').toUpperCase()}`
+  const timeLabel   = finishTime != null ? formatTime(finishTime) : ''
+
+  // Background: navy rectangle + blue accent bars (SVG, no text)
+  const bgSvg = Buffer.from(
+    `<svg width="${width}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+      <rect width="${width}" height="${H}" fill="${BRAND_NAVY}"/>
+      <rect width="${width}" height="4" fill="${BRAND_BLUE}"/>
+      <rect y="${H - 4}" width="${width}" height="4" fill="${BRAND_BLUE}"/>
+      <rect x="0" y="4" width="4" height="${H - 8}" fill="${BRAND_BLUE}" opacity="0.7"/>
+      <rect x="${width - 4}" y="4" width="4" height="${H - 8}" fill="${BRAND_BLUE}" opacity="0.7"/>
+    </svg>`
   )
 
-  // Affiliation line: team and/or bib
-  const hasBib  = bib && bib !== '0'
-  const affParts: string[] = []
-  if (team) affParts.push(escapeXml(team))
-  if (hasBib) affParts.push(escapeXml(`Bib #${bib}`))
-  const affLabel = affParts.join('  ·  ')
+  // Build composites — text layers on top of background
+  const composites: sharp.OverlayOptions[] = [
+    { input: bgSvg, top: 0, left: 0 },
+  ]
 
-  // Meet line: name · location · date
-  const meetParts: string[] = [escapeXml(meetName)]
-  if (meetLocation) meetParts.push(escapeXml(meetLocation))
-  meetParts.push(escapeXml(meetDateLabel(meetDate)))
-  const meetLabel = meetParts.join('  ·  ')
+  const add = async (
+    text: string, fontfile: string, ptSize: number,
+    color: string, top: number, left: number, maxW: number,
+  ) => {
+    if (!text.trim()) return
+    try {
+      const buf = await textPng(text, fontfile, ptSize, color, maxW)
+      composites.push({ input: buf, top, left })
+    } catch { /* skip if text render fails */ }
+  }
 
-  const capturedByName = companyName
-    ? escapeXml(companyName.toUpperCase())
-    : 'IN STRIDE TIMING'
+  const leftMax  = Math.floor(width * 0.62)
+  const rightMax = Math.floor(width * 0.36)
 
-  return `<svg width="${W}" height="${STRIP_H}" xmlns="http://www.w3.org/2000/svg">
+  await Promise.all([
+    add(fullName,    bold,    28, '#FFFFFF', 16,  24,       leftMax),
+    add(affLabel,    regular, 15, '#7EB8F7', 52,  24,       leftMax),
+    add(eventLabel,  regular, 14, '#5B8AB5', 74,  24,       leftMax),
+    add(meetLabel,   regular, 13, '#4A7090', 96,  24,       leftMax),
+    add(capturedBy,  regular, 11, '#3D6080', 18,  width - 20 - rightMax, rightMax),
+    ...(timeLabel ? [add(timeLabel, bold, 32, '#FFFFFF', 68, width - 20 - rightMax, rightMax)] : []),
+  ])
 
-  <!-- background -->
-  <rect width="${W}" height="${STRIP_H}" fill="${BRAND_NAVY}"/>
-
-  <!-- accent bar top -->
-  <rect width="${W}" height="4" fill="${BRAND_BLUE}"/>
-
-  <!-- accent bar bottom -->
-  <rect y="${STRIP_H - 4}" width="${W}" height="4" fill="${BRAND_BLUE}"/>
-
-  <!-- left accent stripe -->
-  <rect x="0" y="4" width="4" height="${STRIP_H - 8}" fill="${BRAND_BLUE}" opacity="0.7"/>
-
-  <!-- right accent stripe -->
-  <rect x="${W - 4}" y="4" width="4" height="${STRIP_H - 8}" fill="${BRAND_BLUE}" opacity="0.7"/>
-
-  <!-- captured by (top-right) -->
-  <text x="${W - 20}" y="38" font-family="sans-serif" font-size="12" text-anchor="end">
-    <tspan fill="#3D6080">Captured by&#160;</tspan><tspan font-weight="bold" fill="${BRAND_BLUE}">${capturedByName}</tspan>
-  </text>
-
-  <!-- athlete name -->
-  <text x="24" y="56" font-family="sans-serif" font-size="30" font-weight="bold"
-        fill="white" letter-spacing="0.3">${fullName}</text>
-
-  <!-- affiliation (team · bib) -->
-  ${affLabel ? `<text x="24" y="80" font-family="sans-serif" font-size="16" fill="#7EB8F7">${affLabel}</text>` : ''}
-
-  <!-- event line -->
-  <text x="24" y="104" font-family="sans-serif" font-size="15" fill="#5B8AB5">${eventLabel}</text>
-
-  <!-- meet line -->
-  <text x="24" y="130" font-family="sans-serif" font-size="14" fill="#4A7090">${meetLabel}</text>
-
-  <!-- finish time (right, monospace) -->
-  ${timeLabel ? `
-  <text x="${W - 20}" y="114" font-family="sans-serif" font-size="34"
-        font-weight="bold" fill="white" text-anchor="end">${timeLabel}</text>` : ''}
-
-</svg>`
+  return sharp({
+    create: { width, height: H, channels: 4, background: { r: 11, g: 13, b: 46, alpha: 1 } },
+  })
+    .composite(composites)
+    .png()
+    .toBuffer()
 }
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 export async function createFormattedImage(
   rawBuffer: Buffer,
@@ -123,10 +174,10 @@ export async function createFormattedImage(
   const height = meta.height ?? 300
   const totalH = height + STRIP_H
 
-  const strip = Buffer.from(buildSvgStrip(width, opts))
+  const strip = await buildStrip(width, opts)
 
   return sharp({
-    create: { width, height: totalH, channels: 3, background: { r: 11, g: 13, b: 46 } },  // matches BRAND_NAVY
+    create: { width, height: totalH, channels: 3, background: { r: 11, g: 13, b: 46 } },
   })
     .composite([
       { input: rawBuffer, top: 0,      left: 0 },
