@@ -155,14 +155,8 @@ export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames,
   }
 
   // ── Pre-purchase: show options ────────────────────────────────────────────
-  // When athlete has frames: basic ($5) + full ($10)
-  // When no frames:          basic ($5) + enhanced ($7)
-  const upgradeT: Tier        = hasFrames ? 'full' : 'enhanced'
-  const upgradeTier           = TIERS[upgradeT]
-
-  const upgradeDescription = hasFrames
-    ? 'Raw + formatted photo-finish image, finish-line camera images + boomerang'
-    : 'Raw + formatted photo-finish with meet and race info included'
+  // When athlete has frames: basic ($5) + enhanced ($10) + full ($20)
+  // When no frames:          basic ($5) + enhanced ($10)
 
   return (
     <div className="space-y-3">
@@ -184,26 +178,59 @@ export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames,
         )}
       </button>
 
-      {/* Enhanced or Full tier depending on hasFrames */}
+      {/* Enhanced tier — always shown */}
       <button
-        onClick={() => handlePurchase(upgradeT)}
+        onClick={() => handlePurchase('enhanced')}
         disabled={loading !== null}
-        className="block w-full text-left bg-blue-50 border-2 border-blue-300 hover:border-blue-500 rounded-xl p-4 transition-colors disabled:opacity-60 disabled:cursor-wait group"
+        className={`block w-full text-left border-2 rounded-xl p-4 transition-colors disabled:opacity-60 disabled:cursor-wait group ${
+          hasFrames
+            ? 'bg-white border-gray-200 hover:border-blue-400'
+            : 'bg-blue-50 border-blue-300 hover:border-blue-500'
+        }`}
       >
         <div className="flex items-center justify-between mb-1">
-          <span className="font-semibold text-blue-900 group-hover:text-blue-700">
-            {upgradeTier.name}
-            <span className="ml-2 text-xs font-normal bg-blue-600 text-white px-2 py-0.5 rounded-full">
-              Best Value
-            </span>
+          <span className={`font-semibold group-hover:text-blue-700 ${hasFrames ? 'text-gray-800' : 'text-blue-900'}`}>
+            {TIERS.enhanced.name}
+            {!hasFrames && (
+              <span className="ml-2 text-xs font-normal bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                Best Value
+              </span>
+            )}
           </span>
-          <span className="text-lg font-bold text-blue-600">{upgradeTier.label}</span>
+          <span className="text-lg font-bold text-blue-600">{TIERS.enhanced.label}</span>
         </div>
-        <p className="text-xs text-blue-700">{upgradeDescription}</p>
-        {loading === upgradeT && (
+        <p className={`text-xs ${hasFrames ? 'text-gray-500' : 'text-blue-700'}`}>
+          Raw + formatted photo-finish image with meet and race info included
+        </p>
+        {loading === 'enhanced' && (
           <p className="text-xs text-blue-600 mt-1">Redirecting to checkout…</p>
         )}
       </button>
+
+      {/* Full tier — only shown when frames are available */}
+      {hasFrames && (
+        <button
+          onClick={() => handlePurchase('full')}
+          disabled={loading !== null}
+          className="block w-full text-left bg-blue-50 border-2 border-blue-300 hover:border-blue-500 rounded-xl p-4 transition-colors disabled:opacity-60 disabled:cursor-wait group"
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className="font-semibold text-blue-900 group-hover:text-blue-700">
+              {TIERS.full.name}
+              <span className="ml-2 text-xs font-normal bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                Best Value
+              </span>
+            </span>
+            <span className="text-lg font-bold text-blue-600">{TIERS.full.label}</span>
+          </div>
+          <p className="text-xs text-blue-700">
+            Raw + formatted photo-finish image, finish-line camera images + boomerang
+          </p>
+          {loading === 'full' && (
+            <p className="text-xs text-blue-600 mt-1">Redirecting to checkout…</p>
+          )}
+        </button>
+      )}
 
       {error && (
         <p className="text-xs text-red-600 text-center">{error}</p>
