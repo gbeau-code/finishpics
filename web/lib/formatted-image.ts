@@ -20,9 +20,20 @@ export interface FormattedImageOptions {
   companyName?: string | null
 }
 
-const STRIP_H   = 190
+// Strip height and font sizes scale with image width so the info bar
+// looks proportional regardless of whether the image is 800px or 2000px wide.
+const STRIP_BASE = 185   // strip height at BASE_WIDTH
+const BASE_WIDTH = 800   // reference width
 const BRAND_BLUE = '#0C7FEA'
 const BRAND_NAVY = '#0B0D2E'
+
+/** Scale factor: 1.0 at 800px wide, 2.0 at 1600px, clamped to [0.8, 3.0] */
+function sc(width: number): number {
+  return Math.max(0.8, Math.min(3.0, width / BASE_WIDTH))
+}
+function px(base: number, width: number): number {
+  return Math.round(base * sc(width))
+}
 
 // ---------------------------------------------------------------------------
 // Font bootstrap — write TTFs to /tmp once per Lambda instance
@@ -88,7 +99,7 @@ async function textPng(
 
 async function buildStrip(width: number, opts: FormattedImageOptions): Promise<Buffer> {
   const { bold, regular } = ensureFonts()
-  const H = STRIP_H
+  const H = px(STRIP_BASE, width)
 
   const {
     firstName, lastName, bib, team, finishTime,
@@ -115,15 +126,20 @@ async function buildStrip(width: number, opts: FormattedImageOptions): Promise<B
   const timeLabel   = finishTime != null ? formatTime(finishTime) : ''
 
   // Background: navy rectangle + blue accent bars (SVG, no text)
+  // All sizes and positions scale with image width
+  const s = sc(width)
+  const p = (base: number) => Math.round(base * s)
+
+  const barPx    = Math.max(4, p(4))
   const dividerX = Math.floor(width * 0.62)
   const bgSvg = Buffer.from(
     `<svg width="${width}" height="${H}" xmlns="http://www.w3.org/2000/svg">
       <rect width="${width}" height="${H}" fill="${BRAND_NAVY}"/>
-      <rect width="${width}" height="4" fill="${BRAND_BLUE}"/>
-      <rect y="${H - 4}" width="${width}" height="4" fill="${BRAND_BLUE}"/>
-      <rect x="0" y="4" width="4" height="${H - 8}" fill="${BRAND_BLUE}" opacity="0.7"/>
-      <rect x="${width - 4}" y="4" width="4" height="${H - 8}" fill="${BRAND_BLUE}" opacity="0.7"/>
-      <rect x="${dividerX}" y="20" width="1" height="${H - 40}" fill="${BRAND_BLUE}" opacity="0.35"/>
+      <rect width="${width}" height="${barPx}" fill="${BRAND_BLUE}"/>
+      <rect y="${H - barPx}" width="${width}" height="${barPx}" fill="${BRAND_BLUE}"/>
+      <rect x="0" y="${barPx}" width="${barPx}" height="${H - barPx * 2}" fill="${BRAND_BLUE}" opacity="0.7"/>
+      <rect x="${width - barPx}" y="${barPx}" width="${barPx}" height="${H - barPx * 2}" fill="${BRAND_BLUE}" opacity="0.7"/>
+      <rect x="${dividerX}" y="${p(20)}" width="${Math.max(1, p(1))}" height="${H - p(40)}" fill="${BRAND_BLUE}" opacity="0.35"/>
     </svg>`
   )
 
@@ -143,19 +159,21 @@ async function buildStrip(width: number, opts: FormattedImageOptions): Promise<B
     } catch { /* skip if text render fails */ }
   }
 
-  const leftMax  = Math.floor(width * 0.60)
+  const padL    = p(24)
+  const padR    = p(16)
+  const leftMax = Math.floor(width * 0.60)
   const rightMax = Math.floor(width * 0.34)
-  const rightX   = width - 16 - rightMax
+  const rightX  = width - padR - rightMax
 
   // Left column — 4 rows with deliberate vertical rhythm
   // Right column — company label + large finish time, vertically centered
   await Promise.all([
-    add(fullName,   bold,    30, '#FFFFFF', 20,  24,     leftMax),
-    add(affLabel,   regular, 16, '#A8D0F8', 62,  24,     leftMax),
-    add(eventLabel, regular, 15, '#7FB8E8', 88,  24,     leftMax),
-    add(meetLabel,  regular, 14, '#6AAAD8', 113, 24,     leftMax),
-    add(capturedBy, regular, 12, '#7FB8E8', 22,  rightX, rightMax),
-    ...(timeLabel ? [add(timeLabel, bold, 38, '#FFFFFF', 72, rightX, rightMax)] : []),
+    add(fullName,   bold,    p(30), '#FFFFFF', p(20),  padL,   leftMax),
+    add(affLabel,   regular, p(16), '#A8D0F8', p(62),  padL,   leftMax),
+    add(eventLabel, regular, p(15), '#7FB8E8', p(88),  padL,   leftMax),
+    add(meetLabel,  regular, p(14), '#6AAAD8', p(113), padL,   leftMax),
+    add(capturedBy, regular, p(12), '#7FB8E8', p(22),  rightX, rightMax),
+    ...(timeLabel ? [add(timeLabel, bold, p(38), '#FFFFFF', p(72), rightX, rightMax)] : []),
   ])
 
   return sharp({
@@ -177,9 +195,12 @@ export async function createFormattedImage(
   const meta   = await sharp(rawBuffer).metadata()
   const width  = meta.width  ?? 800
   const height = meta.height ?? 300
-  const totalH = height + STRIP_H
 
   const strip = await buildStrip(width, opts)
+
+  // Use the strip's actual rendered height (scales with image width)
+  const { height: stripH = px(STRIP_BASE, width) } = await sharp(strip).metadata()
+  const totalH = height + stripH
 
   return sharp({
     create: { width, height: totalH, channels: 3, background: { r: 11, g: 13, b: 46 } },
