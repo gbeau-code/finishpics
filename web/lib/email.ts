@@ -78,7 +78,7 @@ export async function sendPurchaseEmail(params: PurchaseEmailParams): Promise<vo
     downloads += `<a href="${formattedUrl}" style="${btn}">↓ Download Formatted Photo</a><br>`
   }
   if (tier === 'full' && hasFrames) {
-    downloads += `<a href="${gifUrl}" style="${btn2}">↓ Download Boomerang</a><br>`
+    downloads += `<a href="${gifUrl}" style="${btn2}">↓ Download Boomerang GIF</a><br>`
   }
 
   const framesNote = tier === 'full' && hasFrames

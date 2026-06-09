@@ -1,12 +1,11 @@
 /**
  * GET /api/frames/[athleteId]/gif?token=<session_id>
  *
- * Generates an animated boomerang WebP from the athlete's IdentiLynx frames.
+ * Generates an animated boomerang GIF from the athlete's finish-line camera images.
  * Requires a 'full' tier purchase.
  *
  * Boomerang sequence: [0,1,2,...,n-1, n-2,...,1] loops infinitely.
- * Frames are resized to ≤800px wide and encoded as animated WebP (full color,
- * no palette limit — significantly better quality than GIF).
+ * Output: 800px wide animated GIF — ready for Instagram, Twitter, iMessage, etc.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -14,13 +13,15 @@ import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { frameUrl, readImageBuffer, safeName } from '@/lib/blob-storage'
 import { getPurchaseBySession } from '@/lib/purchases'
 import sharp from 'sharp'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const GIFEncoder = require('gif-encoder-2')
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const BOOMERANG_MAX_WIDTH = 800   // px — enough for any screen, keeps file size sane
-const BOOMERANG_DELAY_MS  = 120   // ms per frame (~8 fps)
-const BOOMERANG_QUALITY   = 82    // WebP quality (0–100); 82 is a good balance
+const GIF_MAX_WIDTH = 800   // px — good resolution for social media
+const GIF_DELAY_MS  = 120   // ms per frame (~8 fps)
+const GIF_QUALITY   = 1     // neuquant quality: 1 = best colour, 30 = fastest
 
 export async function GET(
   request: NextRequest,
@@ -54,10 +55,10 @@ export async function GET(
 
     // Determine output dimensions from first frame
     const firstMeta = await sharp(rawFrames[0]).metadata()
-    const origW = firstMeta.width  ?? BOOMERANG_MAX_WIDTH
+    const origW = firstMeta.width  ?? GIF_MAX_WIDTH
     const origH = firstMeta.height ?? 360
-    const outW  = Math.min(BOOMERANG_MAX_WIDTH, origW)
-    const outH  = Math.round(origH * outW / origW)
+    const gifW  = Math.min(GIF_MAX_WIDTH, origW)
+    const gifH  = Math.round(origH * gifW / origW)
 
     // Boomerang sequence: [0,1,...,n-1, n-2,...,1]
     const forward  = rawFrames.map((_, i) => i)
@@ -66,41 +67,34 @@ export async function GET(
       : []
     const sequence = [...forward, ...reverse]
 
-    // Resize each frame to raw RGB pixels
-    const framePixels: Buffer[] = []
+    // Resize each frame to RGBA pixel data
+    const frameData: Buffer[] = []
     for (const idx of sequence) {
       const { data } = await sharp(rawFrames[idx])
-        .resize(outW, outH, { fit: 'fill' })
-        .removeAlpha()
+        .resize(gifW, gifH, { fit: 'fill' })
+        .ensureAlpha()
         .raw()
         .toBuffer({ resolveWithObject: true })
-      framePixels.push(data)
+      frameData.push(data)
     }
 
-    // Stack all frames into one tall buffer — Sharp splits on pageHeight for animation
-    const stacked = Buffer.concat(framePixels)
+    // Encode animated GIF
+    const encoder = new GIFEncoder(gifW, gifH, 'neuquant', false, frameData.length)
+    encoder.setDelay(GIF_DELAY_MS)
+    encoder.setQuality(GIF_QUALITY)
+    encoder.setRepeat(0)   // infinite loop
+    encoder.start()
+    for (const frame of frameData) {
+      encoder.addFrame(frame)
+    }
+    encoder.finish()
 
-    // Encode as animated WebP — full color depth, no palette limit
-    const webpBuffer = await sharp(stacked, {
-      raw: {
-        width:    outW,
-        height:   outH * sequence.length,
-        channels: 3,
-      },
-    })
-    .webp({
-      quality:    BOOMERANG_QUALITY,
-      loop:       0,     // infinite loop
-      delay:      Array(sequence.length).fill(BOOMERANG_DELAY_MS),
-      pageHeight: outH,  // tells Sharp each frame is outH pixels tall
-    })
-    .toBuffer()
+    const gifBuffer = Buffer.from(encoder.out.getData())
+    const filename  = `FinishPics-${safeName(athlete.last_name)}-boomerang.gif`
 
-    const filename = `FinishPics-${safeName(athlete.last_name)}-boomerang.webp`
-
-    return new NextResponse(new Uint8Array(webpBuffer), {
+    return new NextResponse(new Uint8Array(gifBuffer), {
       headers: {
-        'Content-Type':        'image/webp',
+        'Content-Type':        'image/gif',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Cache-Control':       'private, no-store',
       },
