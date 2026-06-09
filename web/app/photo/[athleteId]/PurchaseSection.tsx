@@ -188,16 +188,18 @@ export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames,
             : 'bg-blue-50 border-blue-300 hover:border-blue-500'
         }`}
       >
-        <div className="flex items-center justify-between mb-1">
-          <span className={`font-semibold group-hover:text-blue-700 ${hasFrames ? 'text-gray-800' : 'text-blue-900'}`}>
-            {TIERS.enhanced.name}
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`font-semibold group-hover:text-blue-700 ${hasFrames ? 'text-gray-800' : 'text-blue-900'}`}>
+              {TIERS.enhanced.name}
+            </span>
             {!hasFrames && (
-              <span className="ml-2 text-xs font-normal bg-blue-600 text-white px-2 py-0.5 rounded-full">
+              <span className="text-xs font-normal bg-blue-600 text-white px-2 py-0.5 rounded-full whitespace-nowrap">
                 Best Value
               </span>
             )}
-          </span>
-          <span className="text-lg font-bold text-blue-600">{TIERS.enhanced.label}</span>
+          </div>
+          <span className="text-lg font-bold text-blue-600 shrink-0">{TIERS.enhanced.label}</span>
         </div>
         <p className={`text-xs ${hasFrames ? 'text-gray-500' : 'text-blue-700'}`}>
           Raw + formatted photo-finish image with meet and race info included
@@ -214,14 +216,16 @@ export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames,
           disabled={loading !== null}
           className="block w-full text-left bg-blue-50 border-2 border-blue-300 hover:border-blue-500 rounded-xl p-4 transition-colors disabled:opacity-60 disabled:cursor-wait group"
         >
-          <div className="flex items-center justify-between mb-1">
-            <span className="font-semibold text-blue-900 group-hover:text-blue-700">
-              {TIERS.full.name}
-              <span className="ml-2 text-xs font-normal bg-blue-600 text-white px-2 py-0.5 rounded-full">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-blue-900 group-hover:text-blue-700">
+                {TIERS.full.name}
+              </span>
+              <span className="text-xs font-normal bg-blue-600 text-white px-2 py-0.5 rounded-full whitespace-nowrap">
                 Best Value
               </span>
-            </span>
-            <span className="text-lg font-bold text-blue-600">{TIERS.full.label}</span>
+            </div>
+            <span className="text-lg font-bold text-blue-600 shrink-0">{TIERS.full.label}</span>
           </div>
           <p className="text-xs text-blue-700">
             Raw + formatted photo-finish image, finish-line camera images + boomerang
