@@ -20,7 +20,7 @@ export interface FormattedImageOptions {
   companyName?: string | null
 }
 
-const STRIP_H   = 170
+const STRIP_H   = 190
 const BRAND_BLUE = '#0C7FEA'
 const BRAND_NAVY = '#0B0D2E'
 
@@ -115,6 +115,7 @@ async function buildStrip(width: number, opts: FormattedImageOptions): Promise<B
   const timeLabel   = finishTime != null ? formatTime(finishTime) : ''
 
   // Background: navy rectangle + blue accent bars (SVG, no text)
+  const dividerX = Math.floor(width * 0.62)
   const bgSvg = Buffer.from(
     `<svg width="${width}" height="${H}" xmlns="http://www.w3.org/2000/svg">
       <rect width="${width}" height="${H}" fill="${BRAND_NAVY}"/>
@@ -122,6 +123,7 @@ async function buildStrip(width: number, opts: FormattedImageOptions): Promise<B
       <rect y="${H - 4}" width="${width}" height="4" fill="${BRAND_BLUE}"/>
       <rect x="0" y="4" width="4" height="${H - 8}" fill="${BRAND_BLUE}" opacity="0.7"/>
       <rect x="${width - 4}" y="4" width="4" height="${H - 8}" fill="${BRAND_BLUE}" opacity="0.7"/>
+      <rect x="${dividerX}" y="20" width="1" height="${H - 40}" fill="${BRAND_BLUE}" opacity="0.35"/>
     </svg>`
   )
 
@@ -141,16 +143,19 @@ async function buildStrip(width: number, opts: FormattedImageOptions): Promise<B
     } catch { /* skip if text render fails */ }
   }
 
-  const leftMax  = Math.floor(width * 0.62)
-  const rightMax = Math.floor(width * 0.36)
+  const leftMax  = Math.floor(width * 0.60)
+  const rightMax = Math.floor(width * 0.34)
+  const rightX   = width - 16 - rightMax
 
+  // Left column — 4 rows with deliberate vertical rhythm
+  // Right column — company label + large finish time, vertically centered
   await Promise.all([
-    add(fullName,    bold,    28, '#FFFFFF', 16,  24,       leftMax),
-    add(affLabel,    regular, 15, '#7EB8F7', 52,  24,       leftMax),
-    add(eventLabel,  regular, 14, '#5B8AB5', 74,  24,       leftMax),
-    add(meetLabel,   regular, 13, '#4A7090', 96,  24,       leftMax),
-    add(capturedBy,  regular, 11, '#3D6080', 18,  width - 20 - rightMax, rightMax),
-    ...(timeLabel ? [add(timeLabel, bold, 32, '#FFFFFF', 68, width - 20 - rightMax, rightMax)] : []),
+    add(fullName,   bold,    30, '#FFFFFF', 20,  24,     leftMax),
+    add(affLabel,   regular, 16, '#A8D0F8', 62,  24,     leftMax),
+    add(eventLabel, regular, 15, '#7FB8E8', 88,  24,     leftMax),
+    add(meetLabel,  regular, 14, '#6AAAD8', 113, 24,     leftMax),
+    add(capturedBy, regular, 12, '#7FB8E8', 22,  rightX, rightMax),
+    ...(timeLabel ? [add(timeLabel, bold, 38, '#FFFFFF', 72, rightX, rightMax)] : []),
   ])
 
   return sharp({
