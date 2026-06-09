@@ -139,6 +139,9 @@ export default async function PhotoPage({ params, searchParams }: Props) {
         {/* Right: watermarked preview + frame gallery */}
         <div className="lg:col-span-3 order-1 lg:order-2 space-y-5">
           <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              Photo Finish Image
+            </p>
             <div className="bg-gray-100 rounded-2xl overflow-hidden shadow-md">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -155,7 +158,7 @@ export default async function PhotoPage({ params, searchParams }: Props) {
           {hasFrames && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                Finish-line camera &mdash; {athlete.frame_count} frame{athlete.frame_count !== 1 ? 's' : ''}
+                Finish-line camera &mdash; {athlete.frame_count} image{athlete.frame_count !== 1 ? 's' : ''}
               </p>
               <FrameGallery
                 athleteId={params.athleteId}
@@ -166,7 +169,7 @@ export default async function PhotoPage({ params, searchParams }: Props) {
               <p className="mt-2 text-xs text-center text-gray-400">
                 {purchase?.tier === 'full'
                   ? 'Click any frame to enlarge — then click the download button to save it'
-                  : 'Purchase full package to download individual IdentiLynx frames'}
+                  : 'Purchase full package to download individual finish-line camera images'}
               </p>
             </div>
           )}

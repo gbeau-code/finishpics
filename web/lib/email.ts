@@ -82,7 +82,7 @@ export async function sendPurchaseEmail(params: PurchaseEmailParams): Promise<vo
   }
 
   const framesNote = tier === 'full' && hasFrames
-    ? `<p style="margin:10px 0 0;font-size:13px;color:#6b7280;">Individual IdentiLynx frames are available on your <a href="${photoPageUrl}" style="color:#2563eb;text-decoration:none;">photo page</a>.</p>`
+    ? `<p style="margin:10px 0 0;font-size:13px;color:#6b7280;">Individual finish-line camera images are available on your <a href="${photoPageUrl}" style="color:#2563eb;text-decoration:none;">photo page</a>.</p>`
     : ''
 
   const html = `<!DOCTYPE html>

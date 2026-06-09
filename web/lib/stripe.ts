@@ -36,7 +36,7 @@ export const TIERS = {
     cents:       1000,
     label:       '$10.00',
     name:        'Full Package',
-    description: 'Raw + formatted photo-finish image, all IdentiLynx frames (raw & formatted), and animated boomerang GIF',
+    description: 'Raw + formatted photo-finish image, all finish-line camera images (raw & formatted), and animated boomerang',
   },
 } as const
 

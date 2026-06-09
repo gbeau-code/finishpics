@@ -113,7 +113,7 @@ export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames,
 
             {hasFrames && (
               <p className="text-xs text-center text-blue-700 font-medium">
-                ↓ Scroll down — click any IdentiLynx frame to enlarge and download it individually
+                ↓ Scroll down — click any finish-line camera image to enlarge and download it individually
               </p>
             )}
           </>
@@ -161,7 +161,7 @@ export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames,
   const upgradeTier           = TIERS[upgradeT]
 
   const upgradeDescription = hasFrames
-    ? 'Raw + formatted photo-finish, all IdentiLynx frames + boomerang GIF'
+    ? 'Raw + formatted photo-finish image, finish-line camera images + boomerang'
     : 'Raw + formatted photo-finish with meet and race info included'
 
   return (

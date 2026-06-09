@@ -50,7 +50,7 @@ export default function FrameGallery({ athleteId, frameCount, lastName, token }:
             <img
               src={`/api/frames/${athleteId}/${i}/preview`}
               alt={`Frame ${i + 1}`}
-              className="h-36 w-auto rounded-xl object-cover shadow group-hover:ring-2 group-hover:ring-blue-400 transition-all"
+              className="h-48 w-auto rounded-xl object-cover shadow group-hover:ring-2 group-hover:ring-blue-400 transition-all"
             />
           </button>
         ))}
