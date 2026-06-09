@@ -177,8 +177,8 @@ export default async function PhotoPage({ params, searchParams }: Props) {
               />
               <p className="mt-2 text-xs text-center text-gray-400">
                 {purchase?.tier === 'full'
-                  ? 'Click any frame to enlarge and download'
-                  : 'Purchase full package to download IdentiLynx frames'}
+                  ? 'Click any frame to enlarge — then click the download button to save it'
+                  : 'Purchase full package to download individual IdentiLynx frames'}
               </p>
             </div>
           )}

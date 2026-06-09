@@ -83,8 +83,8 @@ export default function PurchaseSection({ athleteId, sessionId, tier, hasFrames,
             )}
 
             {hasFrames && (
-              <p className="text-xs text-center text-gray-400">
-                Individual IdentiLynx frames available below
+              <p className="text-xs text-center text-blue-700 font-medium">
+                ↓ Scroll down — click any IdentiLynx frame to enlarge and download it individually
               </p>
             )}
           </>
