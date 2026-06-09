@@ -120,6 +120,7 @@ export async function POST(request: NextRequest) {
         frameCount = saved
       } else {
         const localFramesDir = framesDirForAthlete(meetRec.id, heatRec.id, athlete.last_name, athlete.first_name, athlete.bib)
+        fs.mkdirSync(localFramesDir, { recursive: true })
         for (const key of frameKeys) {
           const frameFile = formData.get(key)
           if (frameFile instanceof Blob) {

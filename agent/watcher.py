@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-HEAT_COOLDOWN  = 30.0   # don't re-process the same heat within N seconds
+HEAT_COOLDOWN  = 120.0  # don't re-process the same heat within N seconds
 JPEG_WAIT_SECS = 15.0   # max time to wait for RC-exported JPEG to appear
 JPEG_POLL_SECS = 0.25   # polling interval while waiting for JPEG
 AVI_WAIT_SECS  = 30.0   # video encoding takes longer than JPEG
