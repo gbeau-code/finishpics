@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 _UPLOAD_TIMEOUT       = 30  # seconds — main image upload
 _FRAME_UPLOAD_TIMEOUT = 60  # seconds — frame batch (encoding overhead)
+_FRAME_BATCH_SIZE     = 3   # frames per upload request (~1.2 MB at 400 KB/frame)
 
 
 def upload_athlete(
@@ -140,48 +141,70 @@ def _upload_frames(
     frames: List[bytes],
 ) -> bool:
     """
-    POST all IdentiLynx frames to /api/upload/frames.
-    Frames are sent in a single request (no photo-finish image, so payload
-    stays well under the 4.5 MB limit).
-    Returns True on success, False on failure.
+    POST IdentiLynx frames to /api/upload/frames in batches of _FRAME_BATCH_SIZE.
+
+    Batching is required because each frame can be ~400 KB; sending all at once
+    can exceed Vercel's 4.5 MB serverless payload limit.
+
+    Each batch includes the global frame indices so the server stores them at
+    the correct position, and the total_frames count so the DB is updated once
+    all batches are received.
+
+    Returns True if every batch succeeded, False on first failure.
     """
-    endpoint = f"{api_url.rstrip('/')}/api/upload/frames"
+    endpoint    = f"{api_url.rstrip('/')}/api/upload/frames"
+    total       = len(frames)
+    n_batches   = (total + _FRAME_BATCH_SIZE - 1) // _FRAME_BATCH_SIZE
 
-    files: dict = {
-        'athlete_id': (None, athlete_id, 'text/plain'),
-    }
-    for i, frame_bytes in enumerate(frames):
-        files[f'frame_{i}'] = (f'frame_{i:02d}.jpg', frame_bytes, 'image/jpeg')
+    logger.info(
+        "Uploading %d IdentiLynx frames for athlete %s (%d batch%s)",
+        total, athlete_id, n_batches, '' if n_batches == 1 else 'es',
+    )
 
-    logger.info("Uploading %d IdentiLynx frames for athlete %s", len(frames), athlete_id)
+    for batch_num, batch_start in enumerate(range(0, total, _FRAME_BATCH_SIZE), start=1):
+        batch = frames[batch_start:batch_start + _FRAME_BATCH_SIZE]
 
-    try:
-        response = requests.post(
-            endpoint,
-            headers={'X-API-Key': api_key},
-            files=files,
-            timeout=_FRAME_UPLOAD_TIMEOUT,
+        files: dict = {
+            'athlete_id':   (None, athlete_id,   'text/plain'),
+            'total_frames': (None, str(total),    'text/plain'),
+        }
+        for i, frame_bytes in enumerate(batch):
+            global_idx = batch_start + i
+            files[f'frame_{global_idx}'] = (
+                f'frame_{global_idx:02d}.jpg', frame_bytes, 'image/jpeg'
+            )
+
+        logger.debug(
+            "  Frame batch %d/%d: indices %d–%d",
+            batch_num, n_batches, batch_start, batch_start + len(batch) - 1,
         )
-    except requests.exceptions.ConnectionError as exc:
-        logger.error("Frame upload connection error: %s", exc)
-        return False
-    except requests.exceptions.Timeout:
-        logger.error("Frame upload timed out after %ds", _FRAME_UPLOAD_TIMEOUT)
-        return False
-    except requests.exceptions.RequestException as exc:
-        logger.error("Frame upload failed: %s", exc)
-        return False
 
-    if response.ok:
         try:
-            count = response.json().get('frame_count', len(frames))
-            logger.info("Frames uploaded: %d", count)
-        except Exception:
-            pass
-        return True
-    else:
-        logger.error("Frame upload HTTP %d: %s", response.status_code, _safe_text(response))
-        return False
+            response = requests.post(
+                endpoint,
+                headers={'X-API-Key': api_key},
+                files=files,
+                timeout=_FRAME_UPLOAD_TIMEOUT,
+            )
+        except requests.exceptions.ConnectionError as exc:
+            logger.error("Frame upload connection error: %s", exc)
+            return False
+        except requests.exceptions.Timeout:
+            logger.error("Frame upload timed out after %ds", _FRAME_UPLOAD_TIMEOUT)
+            return False
+        except requests.exceptions.RequestException as exc:
+            logger.error("Frame upload failed: %s", exc)
+            return False
+
+        if not response.ok:
+            logger.error(
+                "Frame upload HTTP %d (batch %d/%d): %s",
+                response.status_code, batch_num, n_batches, _safe_text(response),
+            )
+            return False
+
+    logger.info("All %d frame(s) uploaded successfully", total)
+    return True
 
 
 def _safe_text(response: requests.Response) -> str:

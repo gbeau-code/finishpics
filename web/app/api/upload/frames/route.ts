@@ -45,6 +45,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Athlete not found' }, { status: 404 })
     }
 
+    // total_frames is sent by the agent so we always write the correct count
+    // to the DB even when frames arrive in multiple batches.
+    const totalFramesRaw = formData.get('total_frames')
+    const totalFrames    = totalFramesRaw ? parseInt(totalFramesRaw as string, 10) : null
+
     const frameKeys = [...formData.keys()]
       .filter(k => /^frame_\d+$/.test(k))
       .sort((a, b) => parseInt(a.split('_')[1]) - parseInt(b.split('_')[1]))
@@ -97,16 +102,18 @@ export async function POST(request: NextRequest) {
       framesDir = localFramesDir
     }
 
-    // Persist the frame info on the athlete record
+    // Persist frame info — use totalFrames if provided (multi-batch upload),
+    // otherwise fall back to the count of frames received in this request.
+    const finalCount = (totalFrames && totalFrames > 0) ? totalFrames : frameCount
     const sql = neon(process.env.DATABASE_URL!)
     await sql`
       UPDATE athletes
       SET frames_dir  = ${framesDir},
-          frame_count = ${frameCount}
+          frame_count = ${finalCount}
       WHERE id = ${athleteId}
     `
 
-    return NextResponse.json({ success: true, frame_count: frameCount })
+    return NextResponse.json({ success: true, frame_count: finalCount })
   } catch (err) {
     console.error('Frame upload error:', err)
     return NextResponse.json(
