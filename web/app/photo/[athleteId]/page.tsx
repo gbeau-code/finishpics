@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { formatRound, formatTime, formatEventLabel } from '@/lib/format'
 import FrameGallery from './FrameGallery'
+import PhotoImage from './PhotoImage'
 import PurchaseSection from './PurchaseSection'
 import { getPurchaseBySession, confirmPurchase } from '@/lib/purchases'
 import { getStripe } from '@/lib/stripe'
@@ -146,10 +147,8 @@ export default async function PhotoPage({ params, searchParams }: Props) {
               Photo Finish Image
             </p>
             <div className="bg-gray-100 rounded-2xl overflow-hidden shadow-md">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <PhotoImage
                 src={`/api/preview/${athleteId}`}
-                className="w-full"
                 alt={`Photo-finish image for ${athlete.first_name} ${athlete.last_name}`}
               />
             </div>

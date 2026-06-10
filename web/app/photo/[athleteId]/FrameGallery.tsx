@@ -9,6 +9,40 @@ interface Props {
   token:      string | null   // Stripe session ID — null means not yet purchased
 }
 
+function LightboxImage({ src, alt }: { src: string; alt: string }) {
+  const [loaded, setLoaded] = useState(false)
+  return (
+    <div className="relative rounded-2xl overflow-hidden">
+      {!loaded && <div className="skeleton w-full h-64 rounded-2xl" />}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        className={`w-full rounded-2xl shadow-2xl transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0 absolute inset-0'}`}
+        onLoad={() => setLoaded(true)}
+      />
+    </div>
+  )
+}
+
+function FrameThumb({ src, alt, onClick }: { src: string; alt: string; onClick: () => void }) {
+  const [loaded, setLoaded] = useState(false)
+  return (
+    <div className="flex-none snap-start relative h-48">
+      {!loaded && <div className="skeleton h-48 w-32 rounded-xl" />}
+      <button onClick={onClick} className="focus:outline-none group">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={alt}
+          className={`h-48 w-auto rounded-xl object-cover shadow group-hover:ring-2 group-hover:ring-blue-400 transition-all duration-300 ${loaded ? 'opacity-100' : 'opacity-0 absolute inset-0'}`}
+          onLoad={() => setLoaded(true)}
+        />
+      </button>
+    </div>
+  )
+}
+
 export default function FrameGallery({ athleteId, frameCount, lastName, token }: Props) {
   const [selected, setSelected] = useState<number | null>(null)
   const canDownload = !!token
@@ -40,19 +74,12 @@ export default function FrameGallery({ athleteId, frameCount, lastName, token }:
       {/* Thumbnail strip */}
       <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory">
         {Array.from({ length: frameCount }, (_, i) => (
-          <button
+          <FrameThumb
             key={i}
+            src={`/api/frames/${athleteId}/${i}/preview`}
+            alt={`Frame ${i + 1} — click to enlarge`}
             onClick={() => setSelected(i)}
-            className="flex-none snap-start focus:outline-none group"
-            title={`Frame ${i + 1} — click to enlarge`}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`/api/frames/${athleteId}/${i}/preview`}
-              alt={`Frame ${i + 1}`}
-              className="h-48 w-auto rounded-xl object-cover shadow group-hover:ring-2 group-hover:ring-blue-400 transition-all"
-            />
-          </button>
+          />
         ))}
       </div>
 
@@ -81,11 +108,9 @@ export default function FrameGallery({ athleteId, frameCount, lastName, token }:
             </div>
 
             {/* Image — preview (watermarked) in lightbox */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <LightboxImage
               src={`/api/frames/${athleteId}/${selected}/preview`}
               alt={`Frame ${selected + 1}`}
-              className="w-full rounded-2xl shadow-2xl"
             />
 
             {/* Prev / Next */}
