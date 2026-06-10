@@ -13,7 +13,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-base font-bold text-gray-900 mb-2">The service</h2>
           <p>
-            FinishPics is operated by In Stride Timing. We provide photo-finish images captured
+            FinishPics is operated by FinishPics. We provide photo-finish images captured
             at track and field events, available for purchase and digital download. By purchasing
             from FinishPics you agree to these terms.
           </p>
@@ -50,7 +50,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-base font-bold text-gray-900 mb-2">Copyright</h2>
           <p>
-            All images are the property of In Stride Timing. Purchase grants you a license
+            All images are the property of FinishPics. Purchase grants you a license
             to use the image as described above — it does not transfer ownership or copyright.
           </p>
         </section>
@@ -59,7 +59,7 @@ export default function TermsPage() {
           <h2 className="text-base font-bold text-gray-900 mb-2">Download links</h2>
           <p>
             Your download links do not expire and will remain accessible. We recommend saving
-            your purchase confirmation email as a permanent record. In Stride Timing reserves
+            your purchase confirmation email as a permanent record. FinishPics reserves
             the right to discontinue the service with reasonable advance notice, at which point
             we will make reasonable efforts to notify purchasers.
           </p>
