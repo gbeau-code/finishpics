@@ -46,6 +46,11 @@ export default function RootLayout({
               support@finishpics.com
             </a>
           </p>
+          <p className="mt-1 space-x-3">
+            <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
+            <span>&middot;</span>
+            <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>
+          </p>
         </footer>
       </body>
     </html>
