@@ -3,8 +3,19 @@
 import { useState, useEffect, useCallback } from 'react'
 
 // ---------------------------------------------------------------------------
-// Types (mirroring database shapes returned by /api/admin/meets)
+// Types
 // ---------------------------------------------------------------------------
+
+interface RevenueRow {
+  id: string
+  name: string
+  date: string
+  company_name: string | null
+  sale_count: number
+  total_cents: number
+  platform_cut_cents: number
+  partner_cut_cents: number
+}
 
 type HeatStatus = 'draft' | 'published' | 'hidden'
 
@@ -43,6 +54,10 @@ interface MeetRow {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function formatCents(cents: number) {
+  return `$${(cents / 100).toFixed(2)}`
+}
 
 function formatDate(dateStr: string) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
@@ -88,6 +103,8 @@ export default function AdminPage() {
   const [cleanupDays, setCleanupDays] = useState('14')
   const [cleanupResult, setCleanupResult] = useState<string | null>(null)
   const [toast, setToast]           = useState<string | null>(null)
+  const [revenue, setRevenue]       = useState<RevenueRow[] | null>(null)
+  const [revenueLoading, setRevenueLoading] = useState(false)
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -168,6 +185,15 @@ export default function AdminPage() {
     if (!res.ok) { showToast('Error deleting meet'); return }
     setMeets((prev) => prev.filter((m) => m.id !== meetId))
     showToast(`Meet "${name}" deleted`)
+  }
+
+  async function fetchRevenue() {
+    setRevenueLoading(true)
+    const res = await fetch('/api/admin/revenue', {
+      headers: { Authorization: `Bearer ${password}` },
+    })
+    setRevenueLoading(false)
+    if (res.ok) setRevenue(await res.json())
   }
 
   async function handleCleanup() {
@@ -297,6 +323,73 @@ export default function AdminPage() {
           </div>
           {cleanupResult && (
             <p className="mt-3 text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">{cleanupResult}</p>
+          )}
+        </section>
+
+        {/* Revenue report */}
+        <section className="bg-white border border-gray-100 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-700">Revenue by Meet</h2>
+            <button
+              onClick={fetchRevenue}
+              disabled={revenueLoading}
+              className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              {revenueLoading ? 'Loading…' : revenue ? 'Refresh' : 'Load Report'}
+            </button>
+          </div>
+
+          {revenue && (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100">
+                      <th className="text-left pb-2 pr-4">Meet</th>
+                      <th className="text-left pb-2 pr-4">Operator</th>
+                      <th className="text-right pb-2 pr-4">Sales</th>
+                      <th className="text-right pb-2 pr-4">Gross</th>
+                      <th className="text-right pb-2 pr-4">Your Cut</th>
+                      <th className="text-right pb-2">Owed to Partner</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {revenue.map((row) => (
+                      <tr key={row.id} className={row.partner_cut_cents > 0 ? 'bg-blue-50/40' : ''}>
+                        <td className="py-2 pr-4">
+                          <p className="font-medium text-gray-800">{row.name}</p>
+                          <p className="text-xs text-gray-400">{formatDate(row.date)}</p>
+                        </td>
+                        <td className="py-2 pr-4 text-gray-500 text-xs">{row.company_name ?? '—'}</td>
+                        <td className="py-2 pr-4 text-right text-gray-700">{row.sale_count}</td>
+                        <td className="py-2 pr-4 text-right text-gray-700">{formatCents(row.total_cents)}</td>
+                        <td className="py-2 pr-4 text-right font-semibold text-green-700">{formatCents(row.platform_cut_cents)}</td>
+                        <td className="py-2 text-right font-semibold text-blue-700">
+                          {row.partner_cut_cents > 0 ? formatCents(row.partner_cut_cents) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="border-t-2 border-gray-200">
+                    <tr>
+                      <td colSpan={3} className="pt-2 pr-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</td>
+                      <td className="pt-2 pr-4 text-right font-bold text-gray-800">
+                        {formatCents(revenue.reduce((s, r) => s + r.total_cents, 0))}
+                      </td>
+                      <td className="pt-2 pr-4 text-right font-bold text-green-700">
+                        {formatCents(revenue.reduce((s, r) => s + r.platform_cut_cents, 0))}
+                      </td>
+                      <td className="pt-2 text-right font-bold text-blue-700">
+                        {formatCents(revenue.reduce((s, r) => s + r.partner_cut_cents, 0))}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <p className="mt-3 text-xs text-gray-400">
+                Triangle Timing meets: 85% to partner, 15% to you. All other meets: 100% to you. Gross figures before Stripe fees.
+              </p>
+            </>
           )}
         </section>
 
