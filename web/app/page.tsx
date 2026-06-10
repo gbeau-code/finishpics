@@ -192,7 +192,7 @@ export default function HomePage() {
               <div className="text-5xl mb-4">&#128247;</div>
               <p className="text-xl font-semibold text-gray-700 mb-2">No results found</p>
               <p className="text-gray-500">
-                Try searching by first name, last name, or bib number.
+                Try searching by first name or last name.
               </p>
             </div>
           )}
