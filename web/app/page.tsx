@@ -33,7 +33,7 @@ interface Meet {
 }
 
 
-function AthleteCard({ athlete }: { athlete: SearchResult }) {
+function AthleteCard({ athlete, index }: { athlete: SearchResult; index: number }) {
   const eventLabel = formatEventLabel(
     athlete.heat.event_num,
     athlete.heat.round,
@@ -42,7 +42,10 @@ function AthleteCard({ athlete }: { athlete: SearchResult }) {
   )
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-md transition-all group">
+    <div
+      className="animate-card bg-white border border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-md transition-all group"
+      style={{ animationDelay: `${index * 40}ms` }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -140,7 +143,7 @@ export default function HomePage() {
         <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-3 tracking-tight">
           Your photo-finish moment.
         </h1>
-        <p className="text-xl text-gray-500">Search for your race below.</p>
+        <p className="text-xl text-gray-500">Type your name to find your photo-finish image.</p>
       </div>
 
       {/* Search bar */}
@@ -172,15 +175,15 @@ export default function HomePage() {
 
       {/* Results */}
       {searched ? (
-        <div>
+        <div className="animate-card" style={{ animationDelay: '0ms' }}>
           {results.length > 0 ? (
             <>
               <p className="text-sm text-gray-500 mb-4">
                 {results.length} result{results.length !== 1 ? 's' : ''} for &ldquo;{query}&rdquo;
               </p>
               <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
-                {results.map((athlete) => (
-                  <AthleteCard key={athlete.id} athlete={athlete} />
+                {results.map((athlete, i) => (
+                  <AthleteCard key={athlete.id} athlete={athlete} index={i} />
                 ))}
               </div>
             </>
