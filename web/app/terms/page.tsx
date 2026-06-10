@@ -14,7 +14,7 @@ export default function TermsPage() {
           <h2 className="text-base font-bold text-gray-900 mb-2">The service</h2>
           <p>
             FinishPics is operated by FinishPics. We provide photo-finish images captured
-            at track and field events, available for purchase and digital download. By purchasing
+            at track events, available for purchase and digital download. By purchasing
             from FinishPics you agree to these terms.
           </p>
         </section>

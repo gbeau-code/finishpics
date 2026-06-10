@@ -3,7 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'FinishPics — Your Photo-Finish Moment',
-  description: 'Find and download your photo-finish timing images from track and field meets.',
+  description: 'Find and download your photo-finish timing images from track meets.',
 }
 
 export default function RootLayout({

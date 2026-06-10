@@ -14,7 +14,7 @@ export default function PrivacyPage() {
           <h2 className="text-base font-bold text-gray-900 mb-2">Who we are</h2>
           <p>
             FinishPics is a service operated by FinishPics. We provide photo-finish images
-            from track and field events for purchase and download at{' '}
+            from track events for purchase and download at{' '}
             <a href="https://www.finishpics.com" className="text-blue-600 hover:underline">
               finishpics.com
             </a>.
