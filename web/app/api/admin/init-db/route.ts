@@ -89,5 +89,68 @@ export async function POST(request: NextRequest) {
       ON purchases (athlete_id)
   `
 
+  // Unique indexes for race-condition-safe upserts.
+  // De-duplicate before adding — keep the oldest row in each duplicate group
+  // and remap any children to it, then drop the extras.
+  await sql`
+    WITH dupes AS (
+      SELECT id,
+             ROW_NUMBER() OVER (PARTITION BY name, date ORDER BY created_at) AS rn
+      FROM meets
+    ),
+    keeper AS (
+      SELECT DISTINCT ON (name, date) id AS keep_id, name, date
+      FROM meets ORDER BY name, date, created_at
+    )
+    UPDATE heats
+    SET meet_id = keeper.keep_id
+    FROM keeper
+    JOIN meets ON meets.name = keeper.name AND meets.date = keeper.date
+    WHERE heats.meet_id = meets.id
+      AND meets.id <> keeper.keep_id
+  `
+  await sql`
+    DELETE FROM meets
+    WHERE id IN (
+      SELECT id FROM (
+        SELECT id, ROW_NUMBER() OVER (PARTITION BY name, date ORDER BY created_at) AS rn
+        FROM meets
+      ) t WHERE rn > 1
+    )
+  `
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS meets_name_date_idx ON meets (name, date)
+  `
+
+  await sql`
+    WITH keeper AS (
+      SELECT DISTINCT ON (meet_id, event_num, round, heat_num) id AS keep_id,
+             meet_id, event_num, round, heat_num
+      FROM heats ORDER BY meet_id, event_num, round, heat_num, created_at
+    )
+    UPDATE athletes
+    SET heat_id = keeper.keep_id
+    FROM keeper
+    JOIN heats ON heats.meet_id = keeper.meet_id
+              AND heats.event_num = keeper.event_num
+              AND heats.round = keeper.round
+              AND heats.heat_num = keeper.heat_num
+    WHERE athletes.heat_id = heats.id
+      AND heats.id <> keeper.keep_id
+  `
+  await sql`
+    DELETE FROM heats
+    WHERE id IN (
+      SELECT id FROM (
+        SELECT id, ROW_NUMBER() OVER (PARTITION BY meet_id, event_num, round, heat_num ORDER BY created_at) AS rn
+        FROM heats
+      ) t WHERE rn > 1
+    )
+  `
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS heats_meet_event_round_heat_idx
+      ON heats (meet_id, event_num, round, heat_num)
+  `
+
   return NextResponse.json({ ok: true, message: 'Database schema initialised' })
 }

@@ -155,10 +155,9 @@ export async function POST(request: NextRequest) {
       heat_id:    heatRec.id,
     })
   } catch (err) {
-    console.error('Upload error:', err)
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal server error' },
-      { status: 500 },
-    )
+    const message = err instanceof Error ? err.message : String(err)
+    const stack   = err instanceof Error ? err.stack   : undefined
+    console.error('[upload] 500 error:', message, stack ?? '')
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

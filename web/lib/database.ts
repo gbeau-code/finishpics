@@ -111,32 +111,17 @@ export async function getOrCreateMeet(
   companyName?: string | null,
 ): Promise<Meet> {
   const sql = getDb()
-  const existing = await sql`
-    SELECT * FROM meets WHERE name = ${name} AND date = ${date} LIMIT 1
-  `
-  if (existing.length > 0) {
-    const meet = existing[0] as Meet
-    const locChanged     = location     && location     !== meet.location
-    const companyChanged = companyName  && companyName  !== meet.company_name
-    if (locChanged || companyChanged) {
-      const updated = await sql`
-        UPDATE meets
-        SET location     = COALESCE(NULLIF(${location     ?? ''}, ''), location),
-            company_name = COALESCE(NULLIF(${companyName  ?? ''}, ''), company_name)
-        WHERE id = ${meet.id}
-        RETURNING *
-      `
-      return updated[0] as Meet
-    }
-    return meet
-  }
-
-  const inserted = await sql`
+  // Single atomic upsert — safe against concurrent uploads hitting the same meet.
+  // ON CONFLICT requires the unique index meets_name_date_idx (created by init-db).
+  const rows = await sql`
     INSERT INTO meets (id, name, date, location, company_name, created_at)
     VALUES (${uuid()}, ${name}, ${date}, ${location ?? null}, ${companyName ?? null}, ${now()})
+    ON CONFLICT (name, date) DO UPDATE SET
+      location     = COALESCE(NULLIF(EXCLUDED.location,     ''), meets.location),
+      company_name = COALESCE(NULLIF(EXCLUDED.company_name, ''), meets.company_name)
     RETURNING *
   `
-  return inserted[0] as Meet
+  return rows[0] as Meet
 }
 
 export async function getRecentMeets(limit = 10): Promise<Meet[]> {
@@ -165,16 +150,8 @@ export async function findOrCreateHeat(
   eventName?: string | null,
 ): Promise<Heat> {
   const sql = getDb()
-  const existing = await sql`
-    SELECT * FROM heats
-    WHERE meet_id = ${meetId}
-      AND event_num = ${eventNum}
-      AND round = ${round}
-      AND heat_num = ${heatNum}
-    LIMIT 1
-  `
-  if (existing.length > 0) return existing[0] as Heat
-
+  // Insert and return — if the heat already exists (concurrent upload), do nothing
+  // and fall back to a SELECT. Requires unique index heats_meet_event_round_heat_idx.
   const inserted = await sql`
     INSERT INTO heats
       (id, meet_id, event_num, round, heat_num, event_name,
@@ -184,9 +161,20 @@ export async function findOrCreateHeat(
       (${uuid()}, ${meetId}, ${eventNum}, ${round}, ${heatNum}, ${eventName ?? null},
        null, null, null, null, null,
        'draft', ${now()})
+    ON CONFLICT (meet_id, event_num, round, heat_num) DO NOTHING
     RETURNING *
   `
-  return inserted[0] as Heat
+  if (inserted.length > 0) return inserted[0] as Heat
+
+  const existing = await sql`
+    SELECT * FROM heats
+    WHERE meet_id  = ${meetId}
+      AND event_num = ${eventNum}
+      AND round     = ${round}
+      AND heat_num  = ${heatNum}
+    LIMIT 1
+  `
+  return existing[0] as Heat
 }
 
 export async function updateHeatStatus(

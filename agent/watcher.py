@@ -176,9 +176,10 @@ class HeatProcessor:
         ok_count = fail_count = 0
 
         # ---------------------------------------------------------------
-        # Phase 1 — Fire ALL RC export commands immediately so FinishLynx
-        # can start rendering every image/video in parallel.  No waiting
-        # between athletes here.
+        # Phase 1 — Fire all RC export commands while this event is still
+        # open in FinishLynx.  Image exports go in parallel (fast).
+        # Video exports are staggered with a short delay between each so
+        # FinishLynx doesn't drop alternating requests due to queue pressure.
         # ---------------------------------------------------------------
         pending = []   # athletes whose RC commands succeeded
 
@@ -216,8 +217,6 @@ class HeatProcessor:
                 fail_count += 1
                 continue
 
-            # Fire IdentiLynx video export immediately too — don't wait for the
-            # JPEG first, just queue both exports with FinishLynx now.
             avi_candidate: Optional[Path] = None
             if self.identilynx_enabled:
                 video_exported = export_athlete_video(
@@ -229,6 +228,10 @@ class HeatProcessor:
                 )
                 if video_exported:
                     avi_candidate = Path(self.lif_dir) / f"{jpeg_stem}.avi"
+                    # Brief pause so FinishLynx can start encoding before the
+                    # next video command arrives — prevents queue overload that
+                    # causes alternating exports to be silently dropped.
+                    time.sleep(1.5)
 
             pending.append({
                 'athlete':       athlete,
