@@ -17,6 +17,7 @@ so each request comfortably stays below the 4.5 MB limit.
 
 import json
 import logging
+import time
 from pathlib import Path
 from typing import List, Optional
 
@@ -27,6 +28,8 @@ logger = logging.getLogger(__name__)
 _UPLOAD_TIMEOUT       = 30  # seconds — main image upload
 _FRAME_UPLOAD_TIMEOUT = 60  # seconds — frame batch (encoding overhead)
 _FRAME_BATCH_SIZE     = 3   # frames per upload request (~1.2 MB at 400 KB/frame)
+_FRAME_RETRIES        = 3   # retry attempts for transient 5xx errors
+_FRAME_RETRY_DELAY    = 3.0 # seconds between retries
 
 
 def upload_athlete(
@@ -179,24 +182,43 @@ def _upload_frames(
             batch_num, n_batches, batch_start, batch_start + len(batch) - 1,
         )
 
-        try:
-            response = requests.post(
-                endpoint,
-                headers={'X-API-Key': api_key},
-                files=files,
-                timeout=_FRAME_UPLOAD_TIMEOUT,
-            )
-        except requests.exceptions.ConnectionError as exc:
-            logger.error("Frame upload connection error: %s", exc)
-            return False
-        except requests.exceptions.Timeout:
-            logger.error("Frame upload timed out after %ds", _FRAME_UPLOAD_TIMEOUT)
-            return False
-        except requests.exceptions.RequestException as exc:
-            logger.error("Frame upload failed: %s", exc)
-            return False
+        for attempt in range(1, _FRAME_RETRIES + 1):
+            try:
+                response = requests.post(
+                    endpoint,
+                    headers={'X-API-Key': api_key},
+                    files=files,
+                    timeout=_FRAME_UPLOAD_TIMEOUT,
+                )
+            except requests.exceptions.ConnectionError as exc:
+                logger.warning("Frame upload connection error (attempt %d/%d): %s", attempt, _FRAME_RETRIES, exc)
+                if attempt < _FRAME_RETRIES:
+                    time.sleep(_FRAME_RETRY_DELAY)
+                    continue
+                logger.error("Frame upload connection error — giving up after %d attempts", _FRAME_RETRIES)
+                return False
+            except requests.exceptions.Timeout:
+                logger.warning("Frame upload timed out (attempt %d/%d)", attempt, _FRAME_RETRIES)
+                if attempt < _FRAME_RETRIES:
+                    time.sleep(_FRAME_RETRY_DELAY)
+                    continue
+                logger.error("Frame upload timed out — giving up after %d attempts", _FRAME_RETRIES)
+                return False
+            except requests.exceptions.RequestException as exc:
+                logger.error("Frame upload failed: %s", exc)
+                return False
 
-        if not response.ok:
+            if response.ok:
+                break
+
+            if response.status_code >= 500 and attempt < _FRAME_RETRIES:
+                logger.warning(
+                    "Frame upload HTTP %d (batch %d/%d, attempt %d/%d) — retrying in %.0fs",
+                    response.status_code, batch_num, n_batches, attempt, _FRAME_RETRIES, _FRAME_RETRY_DELAY,
+                )
+                time.sleep(_FRAME_RETRY_DELAY)
+                continue
+
             logger.error(
                 "Frame upload HTTP %d (batch %d/%d): %s",
                 response.status_code, batch_num, n_batches, _safe_text(response),
