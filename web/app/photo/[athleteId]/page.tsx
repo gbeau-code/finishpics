@@ -95,7 +95,7 @@ export default async function PhotoPage({ params, searchParams }: Props) {
             <p className="text-sm text-gray-400 mb-4">{meetDate}</p>
 
             <h1 className="text-2xl font-extrabold text-gray-900 mb-1">
-              {athlete.first_name} {athlete.last_name}
+              {athlete.first_name ? `${athlete.first_name} ${athlete.last_name}` : athlete.last_name}
             </h1>
 
             <div className="flex items-center gap-2 flex-wrap mb-4">
@@ -149,7 +149,7 @@ export default async function PhotoPage({ params, searchParams }: Props) {
             <div className="bg-gray-100 rounded-2xl overflow-hidden shadow-md">
               <PhotoImage
                 src={`/api/preview/${athleteId}`}
-                alt={`Photo-finish image for ${athlete.first_name} ${athlete.last_name}`}
+                alt={`Photo-finish image for ${athlete.first_name ? `${athlete.first_name} ${athlete.last_name}` : athlete.last_name}`}
               />
             </div>
             <p className="mt-2 text-xs text-center text-gray-400">
@@ -195,6 +195,6 @@ export async function generateMetadata({ params }: { params: Promise<{ athleteId
     return { title: 'Athlete Not Found — FinishPics' }
   }
   return {
-    title: `${athlete.first_name} ${athlete.last_name} — ${athlete.heat.meet.name} — FinishPics`,
+    title: `${athlete.first_name ? `${athlete.first_name} ${athlete.last_name}` : athlete.last_name} — ${athlete.heat.meet.name} — FinishPics`,
   }
 }

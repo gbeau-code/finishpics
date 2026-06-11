@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { meet_name, meet_date, meet_location, company_name, event_num, round, heat, event_name, athlete } = metadata
-    if (!meet_name || !meet_date || !event_num || !round || !heat || !athlete?.first_name || !athlete?.last_name) {
+    if (!meet_name || !meet_date || !event_num || !round || !heat || !athlete?.last_name) {
       return NextResponse.json({ error: 'Missing required metadata fields' }, { status: 400 })
     }
 

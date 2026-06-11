@@ -50,7 +50,7 @@ function AthleteCard({ athlete, index }: { athlete: SearchResult; index: number 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <h3 className="text-lg font-bold text-gray-900 truncate">
-              {athlete.first_name} {athlete.last_name}
+              {athlete.first_name ? `${athlete.first_name} ${athlete.last_name}` : athlete.last_name}
             </h3>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-2 flex-wrap">
@@ -143,7 +143,7 @@ export default function HomePage() {
         <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-3 tracking-tight">
           Your photo-finish moment.
         </h1>
-        <p className="text-xl text-gray-500">Type your name to find your photo-finish image.</p>
+        <p className="text-xl text-gray-500">Type your name — or your team name for relays — to find your photo-finish image.</p>
       </div>
 
       {/* Search bar */}
@@ -192,7 +192,7 @@ export default function HomePage() {
               <div className="text-5xl mb-4">&#128247;</div>
               <p className="text-xl font-semibold text-gray-700 mb-2">No results found</p>
               <p className="text-gray-500">
-                Try searching by first name or last name.
+                Try searching by first name, last name, or team name.
               </p>
             </div>
           )}

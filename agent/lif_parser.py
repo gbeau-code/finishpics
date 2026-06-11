@@ -148,10 +148,22 @@ def parse_lif(lif_dir: str, event_num: str, round_code: str, heat_num: str) -> t
             continue
 
         place = int(place_raw)
-        bib = parts[1].strip()
-        last_name  = _fix_name(parts[3])
-        first_name = _fix_name(parts[4])
-        team = parts[5].strip()
+        bib        = parts[1].strip()
+        col3       = _fix_name(parts[3])
+        col4       = _fix_name(parts[4])
+        col5       = parts[5].strip()
+
+        # Relay rows have no individual name: col4 (first_name) is blank.
+        # Treat col3 as the team name and leave first_name empty.
+        if col4 == '':
+            last_name  = col3   # e.g. "North Kingstown"
+            first_name = ''
+            team       = col5   # e.g. "NK A"
+        else:
+            last_name  = col3
+            first_name = col4
+            team       = col5
+
         finish_time = _parse_time(parts[6]) if len(parts) > 6 else None
 
         athlete = {
@@ -163,9 +175,10 @@ def parse_lif(lif_dir: str, event_num: str, round_code: str, heat_num: str) -> t
             'finish_time': finish_time,
         }
         athletes.append(athlete)
+        display_name = last_name if not first_name else f"{first_name} {last_name}"
         logger.info(
-            "  Place=%d Bib=%s  %s %s  %s  %s",
-            place, bib, first_name, last_name, team,
+            "  Place=%d Bib=%s  %s  %s  %s",
+            place, bib, display_name, team,
             f"{finish_time:.2f}s" if finish_time else 'no time',
         )
 
