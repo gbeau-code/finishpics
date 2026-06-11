@@ -15,6 +15,9 @@ interface RevenueRow {
   total_cents: number
   platform_cut_cents: number
   partner_cut_cents: number
+  basic_count: number
+  enhanced_count: number
+  full_count: number
 }
 
 type HeatStatus = 'draft' | 'published' | 'hidden'
@@ -348,6 +351,7 @@ export default function AdminPage() {
                       <th className="text-left pb-2 pr-4">Meet</th>
                       <th className="text-left pb-2 pr-4">Operator</th>
                       <th className="text-right pb-2 pr-4">Sales</th>
+                      <th className="text-right pb-2 pr-4">Tiers</th>
                       <th className="text-right pb-2 pr-4">Gross</th>
                       <th className="text-right pb-2 pr-4">Your Cut</th>
                       <th className="text-right pb-2">Owed to Partner</th>
@@ -362,6 +366,14 @@ export default function AdminPage() {
                         </td>
                         <td className="py-2 pr-4 text-gray-500 text-xs">{row.company_name ?? '—'}</td>
                         <td className="py-2 pr-4 text-right text-gray-700">{row.sale_count}</td>
+                        <td className="py-2 pr-4 text-right">
+                          <span className="text-xs text-gray-500 space-x-1.5">
+                            {row.basic_count > 0 && <span title="Basic ($5)">{row.basic_count}×$5</span>}
+                            {row.enhanced_count > 0 && <span title="Enhanced ($10)">{row.enhanced_count}×$10</span>}
+                            {row.full_count > 0 && <span title="Full ($15)">{row.full_count}×$15</span>}
+                            {row.basic_count === 0 && row.enhanced_count === 0 && row.full_count === 0 && <span className="text-gray-300">—</span>}
+                          </span>
+                        </td>
                         <td className="py-2 pr-4 text-right text-gray-700">{formatCents(row.total_cents)}</td>
                         <td className="py-2 pr-4 text-right font-semibold text-green-700">{formatCents(row.platform_cut_cents)}</td>
                         <td className="py-2 text-right font-semibold text-blue-700">
@@ -372,7 +384,7 @@ export default function AdminPage() {
                   </tbody>
                   <tfoot className="border-t-2 border-gray-200">
                     <tr>
-                      <td colSpan={3} className="pt-2 pr-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</td>
+                      <td colSpan={4} className="pt-2 pr-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</td>
                       <td className="pt-2 pr-4 text-right font-bold text-gray-800">
                         {formatCents(revenue.reduce((s, r) => s + r.total_cents, 0))}
                       </td>

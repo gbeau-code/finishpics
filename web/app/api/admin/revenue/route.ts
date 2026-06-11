@@ -20,8 +20,11 @@ export async function GET(request: NextRequest) {
       m.name,
       m.date,
       m.company_name,
-      COUNT(p.id)::int          AS sale_count,
-      COALESCE(SUM(p.amount_cents), 0)::int AS total_cents
+      COUNT(p.id)::int                                                   AS sale_count,
+      COALESCE(SUM(p.amount_cents), 0)::int                              AS total_cents,
+      COUNT(p.id) FILTER (WHERE p.amount_cents = 500)::int               AS basic_count,
+      COUNT(p.id) FILTER (WHERE p.amount_cents = 1000)::int              AS enhanced_count,
+      COUNT(p.id) FILTER (WHERE p.amount_cents = 1500)::int              AS full_count
     FROM meets m
     LEFT JOIN heats    h ON h.meet_id    = m.id
     LEFT JOIN athletes a ON a.heat_id    = h.id
@@ -43,6 +46,9 @@ export async function GET(request: NextRequest) {
       total_cents:  r.total_cents,
       platform_cut_cents: platformCuts,
       partner_cut_cents:  partnerCuts,
+      basic_count:    r.basic_count,
+      enhanced_count: r.enhanced_count,
+      full_count:     r.full_count,
     }
   })
 
