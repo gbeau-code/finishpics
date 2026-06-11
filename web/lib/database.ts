@@ -124,6 +124,12 @@ export async function getOrCreateMeet(
   return rows[0] as Meet
 }
 
+export async function getMeet(id: string): Promise<Meet | null> {
+  const sql = getDb()
+  const rows = await sql`SELECT * FROM meets WHERE id = ${id} LIMIT 1`
+  return rows.length ? (rows[0] as Meet) : null
+}
+
 export async function getRecentMeets(limit = 10): Promise<Meet[]> {
   const sql = getDb()
   const rows = await sql`
@@ -282,9 +288,10 @@ export async function getAthleteWithContext(id: string): Promise<AthleteWithCont
   return rowToAthleteWithContext(rows[0])
 }
 
-export async function searchAthletes(query: string, limit = 20): Promise<AthleteWithContext[]> {
+export async function searchAthletes(query: string, meetId?: string | null, limit = 20): Promise<AthleteWithContext[]> {
   const sql = getDb()
-  const q = query.toLowerCase().trim()
+  const q   = query.toLowerCase().trim()
+  const mid = meetId ?? null
   const rows = await sql`
     SELECT
       a.*,
@@ -312,6 +319,7 @@ export async function searchAthletes(query: string, limit = 20): Promise<Athlete
     JOIN meets  m ON m.id = h.meet_id
     WHERE
       h.status = 'published'
+      AND (${mid} IS NULL OR m.id = ${mid})
       AND (
         LOWER(a.first_name) LIKE ${'%' + q + '%'}
         OR LOWER(a.last_name)  LIKE ${'%' + q + '%'}

@@ -5,12 +5,11 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  const q = request.nextUrl.searchParams.get('q')?.trim() ?? ''
-  if (!q) {
-    return NextResponse.json([])
-  }
+  const q      = request.nextUrl.searchParams.get('q')?.trim() ?? ''
+  const meetId = request.nextUrl.searchParams.get('meetId')?.trim() || null
+  if (!q) return NextResponse.json([])
 
-  const results = await searchAthletes(q)
+  const results = await searchAthletes(q, meetId)
 
   return NextResponse.json(
     results.map((a) => ({

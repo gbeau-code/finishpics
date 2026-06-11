@@ -1,43 +1,21 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
+import { useState, useCallback, useRef } from 'react'
 import { AthleteCard, SearchResult } from '@/app/components/AthleteCard'
 
-interface Meet {
-  id: string
-  name: string
-  date: string
-}
-
-export default function HomePage() {
-  const [query, setQuery] = useState('')
+export default function MeetSearch({ meetId }: { meetId: string }) {
+  const [query, setQuery]     = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
-  const [recentMeets, setRecentMeets] = useState<Meet[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Load recent meets on mount
-  useEffect(() => {
-    fetch('/api/meets')
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setRecentMeets(data)
-      })
-      .catch(() => {})
-  }, [])
-
   const doSearch = useCallback(async (q: string) => {
-    if (!q.trim()) {
-      setResults([])
-      setSearched(false)
-      return
-    }
+    if (!q.trim()) { setResults([]); setSearched(false); return }
     setLoading(true)
     setSearched(true)
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`)
+      const res  = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}&meetId=${meetId}`)
       const data = await res.json()
       setResults(Array.isArray(data) ? data : [])
     } catch {
@@ -45,7 +23,7 @@ export default function HomePage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [meetId])
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
@@ -54,21 +32,8 @@ export default function HomePage() {
     debounceTimer.current = setTimeout(() => doSearch(val), 300)
   }
 
-  const formatMeetDate = (dateStr: string) => {
-    const d = new Date(dateStr + 'T00:00:00')
-    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-  }
-
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {/* Hero */}
-      <div className="text-center mb-10">
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-3 tracking-tight">
-          Your photo-finish moment.
-        </h1>
-        <p className="text-xl text-gray-500">Select a meet below, or start typing your name to search across all meets.</p>
-      </div>
-
+    <>
       {/* Search bar */}
       <div className="max-w-2xl mx-auto mb-10">
         <div className="relative">
@@ -81,7 +46,7 @@ export default function HomePage() {
             type="text"
             value={query}
             onChange={handleInput}
-            placeholder="Search by name or team across all meets..."
+            placeholder="Search by name or team..."
             className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 transition-colors bg-white shadow-sm placeholder-gray-400"
             autoFocus
           />
@@ -97,8 +62,8 @@ export default function HomePage() {
       </div>
 
       {/* Results */}
-      {searched ? (
-        <div className="animate-card" style={{ animationDelay: '0ms' }}>
+      {searched && (
+        <div className="animate-card">
           {results.length > 0 ? (
             <>
               <p className="text-sm text-gray-500 mb-4">
@@ -106,7 +71,7 @@ export default function HomePage() {
               </p>
               <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
                 {results.map((athlete, i) => (
-                  <AthleteCard key={athlete.id} athlete={athlete} index={i} />
+                  <AthleteCard key={athlete.id} athlete={athlete} index={i} showMeet={false} />
                 ))}
               </div>
             </>
@@ -114,34 +79,11 @@ export default function HomePage() {
             <div className="text-center py-16">
               <div className="text-5xl mb-4">&#128247;</div>
               <p className="text-xl font-semibold text-gray-700 mb-2">No results found</p>
-              <p className="text-gray-500">
-                Try searching by first name, last name, or team name.
-              </p>
+              <p className="text-gray-500">Try searching by first name, last name, or team name.</p>
             </div>
           )}
         </div>
-      ) : (
-        /* Recent meets */
-        recentMeets.length > 0 && (
-          <div>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-              Recent Meets
-            </h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {recentMeets.map((meet) => (
-                <Link
-                  key={meet.id}
-                  href={`/meet/${meet.id}`}
-                  className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 hover:border-blue-300 hover:bg-white hover:shadow-sm transition-all group"
-                >
-                  <p className="font-semibold text-gray-800 text-sm group-hover:text-blue-600 transition-colors">{meet.name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{formatMeetDate(meet.date)}</p>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )
       )}
-    </div>
+    </>
   )
 }
