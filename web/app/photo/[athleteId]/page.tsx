@@ -143,9 +143,18 @@ export default async function PhotoPage({ params, searchParams }: Props) {
         {/* Right: watermarked preview + frame gallery */}
         <div className="lg:col-span-3 order-1 lg:order-2 space-y-5">
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-              Photo Finish Image
-            </p>
+            <div className="flex items-center gap-1.5 mb-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Photo Finish Image
+              </p>
+              <div className="relative group">
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default select-none hover:bg-gray-300 transition-colors">?</span>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-gray-900 text-white text-xs rounded-xl px-3 py-2.5 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                  A photo-finish camera scans the finish line at high speed, building a composite image where the horizontal axis is <span className="font-semibold">time</span>, not depth. Each athlete appears at the exact moment they crossed the line — this is how finish times are measured to the hundredth of a second.
+                  <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                </div>
+              </div>
+            </div>
             <div className="bg-gray-100 rounded-2xl overflow-hidden shadow-md">
               <PhotoImage
                 src={`/api/preview/${athleteId}`}
