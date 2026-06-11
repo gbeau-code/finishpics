@@ -149,9 +149,9 @@ export default async function PhotoPage({ params, searchParams }: Props) {
               </p>
               <div className="relative group">
                 <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default select-none hover:bg-gray-300 transition-colors">?</span>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-gray-900 text-white text-xs rounded-xl px-3 py-2.5 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-gray-900 text-white text-xs rounded-xl px-3 py-2.5 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-900" />
                   A photo-finish camera scans the finish line at high speed, building a composite image where the horizontal axis is <span className="font-semibold">time</span>, not depth. Each athlete appears at the exact moment they crossed the line — this is how finish times are measured to the hundredth of a second.
-                  <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
                 </div>
               </div>
             </div>
