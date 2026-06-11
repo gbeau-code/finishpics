@@ -18,6 +18,13 @@ import {
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+function isValidUploadKey(key: string | null): boolean {
+  if (!key) return false
+  const keys = (process.env.UPLOAD_API_KEYS ?? process.env.UPLOAD_API_KEY ?? '')
+    .split(',').map(k => k.trim()).filter(Boolean)
+  return keys.includes(key)
+}
+
 interface AthleteInput {
   bib: string
   first_name: string
@@ -41,7 +48,7 @@ interface UploadMetadata {
 
 export async function POST(request: NextRequest) {
   const apiKey = request.headers.get('X-API-Key')
-  if (apiKey !== process.env.UPLOAD_API_KEY) {
+  if (!isValidUploadKey(apiKey)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
