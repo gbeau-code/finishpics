@@ -2,20 +2,16 @@
 echo Creating FinishPics Agent desktop shortcut...
 
 set SCRIPT_DIR=%~dp0
-set TARGET=%SCRIPT_DIR%FinishPicsAgent.exe
-set SHORTCUT=%USERPROFILE%\Desktop\FinishPics Agent.lnk
 
 powershell -NoProfile -Command ^
+  "$desktop = [Environment]::GetFolderPath('Desktop'); " ^
+  "$lnk = Join-Path $desktop 'FinishPics Agent.lnk'; " ^
   "$ws = New-Object -ComObject WScript.Shell; " ^
-  "$s = $ws.CreateShortcut('%SHORTCUT%'); " ^
-  "$s.TargetPath = '%TARGET%'; " ^
+  "$s = $ws.CreateShortcut($lnk); " ^
+  "$s.TargetPath = '%SCRIPT_DIR%FinishPicsAgent.exe'; " ^
   "$s.WorkingDirectory = '%SCRIPT_DIR%'; " ^
   "$s.Description = 'FinishPics Agent'; " ^
-  "$s.Save()"
+  "$s.Save(); " ^
+  "if (Test-Path $lnk) { Write-Host 'Done! Shortcut created on your Desktop.' } else { Write-Host 'ERROR: Could not create shortcut.' }"
 
-if exist "%SHORTCUT%" (
-    echo Done! Shortcut created on your Desktop.
-) else (
-    echo ERROR: Could not create shortcut. Try running as Administrator.
-)
 pause

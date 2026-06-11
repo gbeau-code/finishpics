@@ -64,7 +64,14 @@ def _load_fonts() -> str:
     return _MONO if loaded else _FALLBACK
 
 
-CONFIG_PATH = Path(__file__).parent / "config.ini"
+# In a PyInstaller bundle, __file__ resolves inside the _internal folder;
+# config.ini lives next to the exe so users can edit it.
+_APP_DIR = (
+    Path(sys.executable).parent
+    if getattr(sys, "frozen", False)
+    else Path(__file__).parent
+)
+CONFIG_PATH = _APP_DIR / "config.ini"
 
 
 def _write_config(cfg: configparser.ConfigParser) -> None:
