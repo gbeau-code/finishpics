@@ -40,11 +40,22 @@ from app_state import ActivityEntry, AppState
 # Logging
 # ---------------------------------------------------------------------------
 
+# In a PyInstaller windowed build sys.stdout is None, so always log to a
+# file next to the exe — it's the only way to see errors on partner machines.
+_LOG_DIR = (
+    Path(sys.executable).parent
+    if getattr(sys, 'frozen', False)
+    else Path(__file__).parent
+)
+_handlers: list = [logging.FileHandler(_LOG_DIR / 'agent.log', encoding='utf-8')]
+if sys.stdout is not None:
+    _handlers.append(logging.StreamHandler(sys.stdout))
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s  %(levelname)-8s  %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
-    handlers=[logging.StreamHandler(sys.stdout)],
+    handlers=_handlers,
 )
 logger = logging.getLogger(__name__)
 
@@ -255,8 +266,19 @@ class HeatProcessor:
             avi_candidate = item['avi_candidate']
 
             if not wait_for_jpeg(jpeg_path):
-                logger.error("  Bib %s: JPEG did not appear within %.0fs", bib, JPEG_WAIT_SECS)
+                logger.error("  Bib %s: JPEG did not appear within %.0fs — check that "
+                             "FinishLynx exports images to %s", bib, JPEG_WAIT_SECS, self.lif_dir)
                 fail_count += 1
+                if self.state:
+                    self.state.add_activity(ActivityEntry(
+                        timestamp=datetime.now(),
+                        first_name=athlete['first_name'],
+                        last_name=athlete['last_name'],
+                        event_label='Image not found — check FinishLynx export folder',
+                        finish_time=athlete['finish_time'],
+                        success=False,
+                        frame_count=0,
+                    ))
                 continue
 
             identilynx_frames: List[bytes] = []
