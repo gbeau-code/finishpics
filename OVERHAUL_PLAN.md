@@ -133,29 +133,42 @@ the `social` bundle must NOT expose the clean photo download.
 - NOTE: Full bundle saves the chosen styling as one post + one story (the
   2-graphic allotment); per-graphic independent styling can come later.
 
-### P4 — Cart + combined checkout + fulfillment
-- Cart store (client, localStorage): lines `{lineId, athleteId, bundle, config}`;
-  edit rehydrates the Studio; header badge. `/cart` review page.
-- `/api/checkout`: pre-create pending `orders` + `order_items` in DB, then one Stripe
-  session with a line item per cart line; put `order_id` in metadata (avoids Stripe
-  metadata size limits).
-- Webhook + success reconciliation → mark order paid, assign `FP-####`.
-- `/order/[orderNumber]?token=…` confirmation: per-item server-rendered download
-  routes gated by `resolveAccess`; native share = fetch server file → `navigator.share`
-  (progressive enhancement). Extend `email.ts` to email the order's links.
+### P4 — Cart + combined checkout + fulfillment ✅ (2026-07-12, commit 217c640)
+- `/cart` page (lines, edit/remove, total, checkout CTA); `/api/checkout` POST
+  creates one Stripe session for the cart + pending order rows (server-side
+  pricing; `fpKind=order` metadata).
+- Webhook confirms orders (assigns FP-####); legacy purchase path untouched.
+- ALL download routes (raw/formatted/frames/frame-formatted/gif) now gate via
+  `resolveAccess` — legacy tokens and order tokens both work; `social` bundle
+  denied the clean photo. New `/api/social/[athleteId]/[index]` renders the
+  purchased graphic from the order item's saved config.
+- `/order/confirm?session_id=`: Stripe reconciliation, success hero, per-item
+  capability-aware download cards, cart auto-clear.
+- Known gap (polish): a photo page visited with an ORDER token shows the Studio,
+  not downloads — the order page is the download hub (email + redirect go there).
 
-### P5 — Admin, integrity, polish
-- Admin: add venue to meet create/upload; revenue must sum **both** `purchases` and
-  `orders`; extend smart-cleanup to treat `order_items` as purchases (see `FEATURES.md`).
-- Motion polish, mobile stacked layouts, accessibility pass.
+### P5 — Admin, integrity ✅ (2026-07-12, commit fd8c9e9)
+- Smart meet cleanup implemented (see FEATURES.md — unpurchased-only deletion,
+  both purchase systems protect athletes).
+- Revenue report sums legacy purchases UNION v2 order items.
+- `sendOrderEmail` (branded, links to order page) sent from the webhook.
+- Remaining polish (post-review): native share on confirmation page, page
+  transitions, film-strip frame picker in Studio, per-graphic styling for Full.
 
-### Cutover
-- Build on `v2` branch / Vercel preview against the **same** DB + Blob.
-- Seed/test with real past meets.
-- **Regression gate:** a legacy `purchases` link still downloads. A new cart order
-  downloads every item. `social` bundle hides the clean photo.
-- Merge → deploy to production domain. No data migration beyond the additive tables.
-- Leave the agent + LSS pipeline untouched so next season ingests day one.
+### Cutover (remaining)
+1. Push `v2` → Vercel preview deployment (same env vars / DB / Blob as prod).
+2. Run `POST /api/admin/init-db` once (adds orders/order_items/sequence —
+   additive; **revenue endpoint 500s until this runs**).
+3. Seed test: upload a past meet via the agent's test path; walk the full flow
+   home → meets → search → Studio → cart (2+ athletes) → Stripe test card →
+   confirmation → every download link (raw/formatted/social post+story/gif).
+4. **Regression gate:** a real legacy `purchases` link (old email) still
+   downloads; `social`-bundle token gets 402 on `/api/download/.../raw`.
+5. Verify order email arrives (Resend) and revenue report shows the test order.
+6. Merge `v2` → `main`, deploy to production domain. No data migration beyond
+   the additive tables. Agent + LSS pipeline untouched.
+7. Optionally remove or gate `/dev/studio` (already returns 404-ish in prod
+   unless `FP_ENABLE_DEV_PAGES=1`).
 
 ## Key risks
 - Preview↔Sharp drift → mitigated by shared spec + shared font (test each template
