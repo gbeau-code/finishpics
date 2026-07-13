@@ -2,9 +2,11 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { formatRound, formatTime, formatEventLabel } from '@/lib/format'
+import Banner from '@/app/components/ui/Banner'
 import FrameGallery from './FrameGallery'
 import PhotoImage from './PhotoImage'
 import PurchaseSection from './PurchaseSection'
+import Studio from './Studio'
 import { getPurchaseBySession, confirmPurchase } from '@/lib/purchases'
 import { getStripe } from '@/lib/stripe'
 
@@ -16,19 +18,13 @@ interface Props {
 }
 
 // ---------------------------------------------------------------------------
-// Reconcile Stripe session → purchase row
-// Called when user returns from Stripe Checkout.
-// Handles the race where the success page loads before the webhook fires.
+// Reconcile Stripe session → purchase row (legacy v1 single-athlete purchases;
+// kept forever so pre-v2 download links never break)
 // ---------------------------------------------------------------------------
-async function resolveSessionPurchase(
-  sessionId:  string,
-  athleteId:  string,
-) {
-  // 1. Check DB first (webhook may have already confirmed it)
+async function resolveSessionPurchase(sessionId: string, athleteId: string) {
   const existing = await getPurchaseBySession(sessionId, athleteId)
   if (existing) return existing
 
-  // 2. DB row not confirmed yet — verify directly with Stripe
   try {
     const session = await getStripe().checkout.sessions.retrieve(sessionId)
     if (
@@ -52,8 +48,8 @@ async function resolveSessionPurchase(
 // Page
 // ---------------------------------------------------------------------------
 export default async function PhotoPage({ params, searchParams }: Props) {
-  const { athleteId }   = await params
-  const { session_id }  = await searchParams
+  const { athleteId }  = await params
+  const { session_id } = await searchParams
 
   const athlete = await getAthleteWithContext(athleteId)
   if (!athlete) notFound()
@@ -62,139 +58,166 @@ export default async function PhotoPage({ params, searchParams }: Props) {
   const { heat } = athlete
   const meet     = heat.meet
 
-  // Check for a post-payment session
   const sessionId = session_id ?? null
   const purchase  = sessionId
     ? await resolveSessionPurchase(sessionId, athleteId)
     : null
 
+  const displayName = athlete.first_name
+    ? `${athlete.first_name} ${athlete.last_name}`
+    : athlete.last_name
   const eventLabel = formatEventLabel(heat.event_num, heat.round, heat.heat_num, heat.event_name)
+  const eventName  = heat.event_name ?? `Event ${heat.event_num}`
   const roundLabel = formatRound(heat.round)
   const hasFrames  = (athlete.frame_count ?? 0) > 0
+  const timeLabel  = athlete.finish_time != null ? formatTime(athlete.finish_time) : null
 
   const meetDate = new Date(meet.date + 'T00:00:00').toLocaleDateString('en-US', {
     month: 'long', day: 'numeric', year: 'numeric',
   })
 
+  const previewInfo = {
+    name:       displayName,
+    eventLabel: eventName,
+    timeLabel,
+    meetName:   meet.name,
+  }
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8 flex-wrap">
-        <Link href="/" className="hover:text-blue-600 transition-colors">Home</Link>
-        <span className="text-gray-300">/</span>
-        <span className="text-gray-700 font-medium">{meet.name}</span>
-        <span className="text-gray-300">/</span>
-        <span>{eventLabel}</span>
-      </nav>
-
-      <div className="grid lg:grid-cols-5 gap-10">
-        {/* Left: info + purchase/download */}
-        <div className="lg:col-span-2 order-2 lg:order-1">
-          <div className="bg-gray-50 rounded-2xl p-6 mb-6">
-            <p className="text-sm font-medium text-gray-500 mb-0.5">{meet.name}</p>
-            <p className="text-sm text-gray-400 mb-4">{meetDate}</p>
-
-            <h1 className="text-2xl font-extrabold text-gray-900 mb-1">
-              {athlete.first_name ? `${athlete.first_name} ${athlete.last_name}` : athlete.last_name}
-            </h1>
-
-            <div className="flex items-center gap-2 flex-wrap mb-4">
-              {athlete.bib && athlete.bib !== '0' && (
-                <span className="text-sm font-medium text-gray-600 bg-white border border-gray-200 px-2.5 py-0.5 rounded-lg">
-                  Bib #{athlete.bib}
-                </span>
-              )}
-              {athlete.team && <span className="text-sm text-gray-500">{athlete.team}</span>}
-            </div>
-
-            <div className="space-y-1.5 text-sm text-gray-600 mb-6">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Event</span>
-                <span className="font-medium">{heat.event_name ?? `Event ${heat.event_num}`}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Round</span>
-                <span className="font-medium">{roundLabel}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Heat</span>
-                <span className="font-medium">{heat.heat_num}</span>
-              </div>
-              {athlete.finish_time != null && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Finish Time</span>
-                  <span className="font-mono font-semibold text-gray-800">{formatTime(athlete.finish_time)}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Purchase / download section */}
-            <PurchaseSection
-              athleteId={athleteId}
-              sessionId={sessionId}
-              tier={purchase?.tier ?? null}
-              hasFrames={hasFrames}
-              lastName={athlete.last_name}
-              purchaseEmail={purchase?.email ?? null}
-            />
-          </div>
-        </div>
-
-        {/* Right: watermarked preview + frame gallery */}
-        <div className="lg:col-span-3 order-1 lg:order-2 space-y-5">
-          <div>
-            <div className="flex items-center gap-1.5 mb-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Photo Finish Image
-              </p>
-              <div className="relative group">
-                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default select-none hover:bg-gray-300 transition-colors">?</span>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-gray-900 text-white text-xs rounded-xl px-3 py-2.5 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-900" />
-                  A photo-finish camera scans the finish line at high speed, building a composite image where the horizontal axis is <span className="font-semibold">time</span>, not depth. Each athlete appears at the exact moment they crossed the line — this is how finish times are measured to the hundredth of a second.
-                </div>
-              </div>
-            </div>
-            <div className="bg-gray-100 rounded-2xl overflow-hidden shadow-md">
-              <PhotoImage
-                src={`/api/preview/${athleteId}`}
-                alt={`Photo-finish image for ${athlete.first_name ? `${athlete.first_name} ${athlete.last_name}` : athlete.last_name}`}
-              />
-            </div>
-            <p className="mt-2 text-xs text-center text-gray-400">
-              Watermark removed on purchase
+    <div>
+      {/* ── Athlete banner ─────────────────────────────────────────────── */}
+      <Banner
+        eyebrow={meet.name}
+        title={displayName}
+        meta={
+          <>
+            {[athlete.team, athlete.bib && athlete.bib !== '0' ? `Bib ${athlete.bib}` : null]
+              .filter(Boolean).join(' · ')}
+            {(athlete.team || (athlete.bib && athlete.bib !== '0')) && ' — '}
+            {eventName} · {roundLabel} · Heat {heat.heat_num} · {meetDate}
+          </>
+        }
+      >
+        <div className="text-right">
+          {athlete.place != null && (
+            <p className="fp-eyebrow text-[11px] text-fp-gold mb-1">
+              {placeLabel(athlete.place)}
             </p>
-          </div>
-
-          {hasFrames && (
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                Finish-line camera &mdash; {athlete.frame_count} image{athlete.frame_count !== 1 ? 's' : ''}
-              </p>
-              <FrameGallery
-                athleteId={athleteId}
-                frameCount={athlete.frame_count!}
-                lastName={athlete.last_name}
-                token={purchase?.tier === 'full' ? (sessionId ?? null) : null}
-              />
-              <p className="mt-2 text-xs text-center text-gray-400">
-                {purchase?.tier === 'full'
-                  ? 'Click any frame to enlarge — then click the download button to save it'
-                  : 'Purchase full package to download individual finish-line camera images'}
-              </p>
-            </div>
+          )}
+          {timeLabel && (
+            <p className="tnum fp-display text-4xl text-white">{timeLabel}</p>
           )}
         </div>
+      </Banner>
+
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 lg:px-8 py-8 fp-page-in">
+        {/* Breadcrumb back */}
+        <nav className="text-sm text-fp-muted mb-6">
+          <Link href={`/meet/${meet.id}`} className="font-bold text-fp-blue hover:underline">
+            ← {meet.name}
+          </Link>
+          <span className="text-fp-faint"> / {eventLabel}</span>
+        </nav>
+
+        <div className="grid lg:grid-cols-[1fr_400px] gap-10">
+          {/* ── Left: the finish photo + frames ──────────────────────────── */}
+          <div className="space-y-6 min-w-0">
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <p className="fp-eyebrow text-[11px] text-fp-navy not-italic">
+                  Photo-finish image
+                </p>
+                <div className="relative group">
+                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-fp-border text-fp-muted text-[10px] font-bold cursor-default select-none">?</span>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-fp-navy text-white text-xs rounded-xl px-3 py-2.5 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-fp-md">
+                    A photo-finish camera scans the finish line at high speed, building a composite image where the horizontal axis is <span className="font-semibold">time</span>, not depth. Each athlete appears at the exact moment they crossed the line.
+                  </div>
+                </div>
+              </div>
+              <div className="relative bg-fp-stage rounded-fp-card overflow-hidden shadow-fp-md">
+                <PhotoImage
+                  src={`/api/preview/${athleteId}`}
+                  alt={`Photo-finish image for ${displayName}`}
+                />
+                <div className="fp-scanline" />
+              </div>
+              <p className="mt-2 text-xs text-center text-fp-faint">
+                Watermark removed on purchase
+              </p>
+            </div>
+
+            {hasFrames && (
+              <div>
+                <p className="fp-eyebrow text-[11px] text-fp-navy not-italic mb-2">
+                  Finish-line camera — {athlete.frame_count} image{athlete.frame_count !== 1 ? 's' : ''}
+                </p>
+                <FrameGallery
+                  athleteId={athleteId}
+                  frameCount={athlete.frame_count!}
+                  lastName={athlete.last_name}
+                  token={purchase?.tier === 'full' ? (sessionId ?? null) : null}
+                />
+                <p className="mt-2 text-xs text-center text-fp-faint">
+                  {purchase?.tier === 'full'
+                    ? 'Click any frame to enlarge — then click the download button to save it'
+                    : 'Included with the Full bundle'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* ── Right rail: Studio (pre-purchase) or downloads (post) ────── */}
+          <div className="min-w-0">
+            {purchase && sessionId ? (
+              <div className="bg-fp-stage rounded-fp-card p-6">
+                <PurchaseSection
+                  athleteId={athleteId}
+                  sessionId={sessionId}
+                  tier={purchase.tier}
+                  hasFrames={hasFrames}
+                  lastName={athlete.last_name}
+                  purchaseEmail={purchase.email ?? null}
+                />
+              </div>
+            ) : (
+              <Studio
+                athleteId={athleteId}
+                previewSrc={`/api/preview/${athleteId}`}
+                info={previewInfo}
+                team={athlete.team}
+                display={{
+                  name:       displayName,
+                  team:       athlete.team,
+                  eventLabel,
+                  meetName:   meet.name,
+                  timeLabel,
+                }}
+                hasFrames={hasFrames}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Disclaimer */}
+        <p className="mt-12 text-xs text-center text-fp-faint max-w-2xl mx-auto leading-relaxed">
+          Finish times are captured by photo-finish equipment and are provided for reference only.
+          They do not constitute official results. Official results are determined by meet officials
+          and directors — in the event of a disqualification, protest, or other ruling, officially
+          posted results supersede any information shown here.
+        </p>
       </div>
-      {/* Disclaimer */}
-      <p className="mt-10 text-xs text-center text-gray-400 max-w-2xl mx-auto leading-relaxed">
-        Finish times are captured by photo-finish equipment and are provided for reference only.
-        They do not constitute official results. Official results are determined by meet officials
-        and directors — in the event of a disqualification, protest, or other ruling, officially
-        posted results supersede any information shown here.
-      </p>
     </div>
   )
+}
+
+function placeLabel(place: number): string {
+  const suffix =
+    place % 100 >= 11 && place % 100 <= 13 ? 'th'
+    : place % 10 === 1 ? 'st'
+    : place % 10 === 2 ? 'nd'
+    : place % 10 === 3 ? 'rd'
+    : 'th'
+  return `${place}${suffix} place`
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ athleteId: string }> }) {
