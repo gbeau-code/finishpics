@@ -14,21 +14,32 @@ export async function GET(request: NextRequest) {
 
   const sql = neon(process.env.DATABASE_URL!)
 
+  // Sales = legacy per-athlete purchases UNION v2 order items (both paid)
   const rows = await sql`
+    WITH sales AS (
+      SELECT p.athlete_id, p.amount_cents
+      FROM purchases p
+      WHERE p.status = 'paid'
+      UNION ALL
+      SELECT oi.athlete_id, oi.amount_cents
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      WHERE o.status = 'paid'
+    )
     SELECT
       m.id,
       m.name,
       m.date,
       m.company_name,
-      COUNT(p.id)::int                                                   AS sale_count,
-      COALESCE(SUM(p.amount_cents), 0)::int                              AS total_cents,
-      COUNT(p.id) FILTER (WHERE p.amount_cents = 500)::int               AS basic_count,
-      COUNT(p.id) FILTER (WHERE p.amount_cents = 1000)::int              AS enhanced_count,
-      COUNT(p.id) FILTER (WHERE p.amount_cents = 1500)::int              AS full_count
+      COUNT(s.athlete_id)::int                                           AS sale_count,
+      COALESCE(SUM(s.amount_cents), 0)::int                              AS total_cents,
+      COUNT(s.athlete_id) FILTER (WHERE s.amount_cents = 500)::int       AS basic_count,
+      COUNT(s.athlete_id) FILTER (WHERE s.amount_cents = 1000)::int      AS enhanced_count,
+      COUNT(s.athlete_id) FILTER (WHERE s.amount_cents = 1500)::int      AS full_count
     FROM meets m
     LEFT JOIN heats    h ON h.meet_id    = m.id
     LEFT JOIN athletes a ON a.heat_id    = h.id
-    LEFT JOIN purchases p ON p.athlete_id = a.id AND p.status = 'paid'
+    LEFT JOIN sales    s ON s.athlete_id = a.id
     GROUP BY m.id, m.name, m.date, m.company_name
     ORDER BY m.date DESC, m.name
   `

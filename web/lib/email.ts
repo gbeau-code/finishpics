@@ -168,3 +168,95 @@ export async function sendPurchaseEmail(params: PurchaseEmailParams): Promise<vo
 
   if (error) throw new Error(`Resend error: ${error.message}`)
 }
+
+// ---------------------------------------------------------------------------
+// v2 combined order email
+// ---------------------------------------------------------------------------
+
+export interface OrderEmailItem {
+  athleteName: string
+  meetName:    string
+  eventLabel:  string
+  bundleTitle: string
+  priceLabel:  string
+}
+
+export interface OrderEmailParams {
+  to:          string
+  orderNumber: string
+  token:       string    // order Stripe session ID — download token
+  totalLabel:  string    // e.g. "$25.00"
+  items:       OrderEmailItem[]
+}
+
+/** Confirmation email for a v2 combined order — links to the order page. */
+export async function sendOrderEmail(params: OrderEmailParams): Promise<void> {
+  const { to, orderNumber, token, totalLabel, items } = params
+  const orderUrl = `${APP_URL()}/order/confirm?session_id=${encodeURIComponent(token)}`
+
+  const rows = items.map(it => `
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;">
+        <p style="margin:0;font-size:14px;font-weight:600;color:#111827;">${it.athleteName}</p>
+        <p style="margin:2px 0 0;font-size:12px;color:#6b7280;">${it.meetName} &middot; ${it.eventLabel}</p>
+        <p style="margin:2px 0 0;font-size:12px;color:#9ca3af;">${it.bundleTitle} bundle</p>
+      </td>
+      <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;text-align:right;font-size:14px;font-weight:700;color:#111827;white-space:nowrap;">${it.priceLabel}</td>
+    </tr>`).join('')
+
+  const html = `<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
+<tr><td align="center">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+
+  <!-- Header -->
+  <tr><td style="background:#0A1B3D;border-radius:12px 12px 0 0;padding:26px 32px;border-bottom:3px solid #FDB927;">
+    <p style="margin:0;font-size:20px;font-weight:800;font-style:italic;color:#ffffff;">Finish<span style="color:#FDB927;">Pics</span></p>
+    <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.75);">Order confirmed — you own your finish line.</p>
+  </td></tr>
+
+  <!-- Body -->
+  <tr><td style="background:#ffffff;padding:28px 32px;">
+    <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Order <strong style="color:#111827;">${orderNumber}</strong></p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:10px 0 4px;">
+      ${rows}
+      <tr>
+        <td style="padding:12px 0 0;font-size:14px;font-weight:700;color:#111827;">Total</td>
+        <td style="padding:12px 0 0;text-align:right;font-size:16px;font-weight:800;color:#111827;">${totalLabel}</td>
+      </tr>
+    </table>
+
+    <p style="margin:24px 0 0;">
+      <a href="${orderUrl}" style="display:inline-block;padding:13px 26px;background:#FDB927;color:#151515 !important;text-decoration:none;border-radius:10px;font-weight:800;font-size:15px;">Open your downloads →</a>
+    </p>
+    <p style="margin:14px 0 0;font-size:12px;color:#9ca3af;line-height:1.5;">
+      All your files — hi-res photos, formatted images, and social graphics — live on your
+      order page. Bookmark it: the links never expire.
+    </p>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td style="background:#f8fafc;border-top:1px solid #e5e7eb;border-radius:0 0 12px 12px;padding:18px 32px;">
+    <p style="margin:0;font-size:11px;color:#9ca3af;line-height:1.5;">
+      Questions? Reply to this email or contact <a href="mailto:support@finishpics.com" style="color:#9ca3af;">support@finishpics.com</a><br>
+      Powered by <a href="https://www.finishpics.com" style="color:#9ca3af;">FinishPics</a>
+    </p>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`
+
+  const { error } = await getResend().emails.send({
+    from:    FROM_EMAIL(),
+    to,
+    subject: `Your FinishPics order ${orderNumber} is ready`,
+    html,
+  })
+
+  if (error) throw new Error(`Resend error: ${error.message}`)
+}

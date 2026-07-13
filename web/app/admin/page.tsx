@@ -202,7 +202,11 @@ export default function AdminPage() {
   async function handleCleanup() {
     const days = parseInt(cleanupDays, 10)
     if (isNaN(days) || days < 1) { showToast('Enter a valid number of days'); return }
-    if (!confirm(`Delete all meets older than ${days} days? This cannot be undone.`)) return
+    if (!confirm(
+      `Clean up meets older than ${days} days?\n\n` +
+      'Unpurchased athlete images are deleted. Athletes with a paid purchase ' +
+      'are kept forever (their download links stay live). This cannot be undone.',
+    )) return
     setCleanupResult(null)
     const res = await fetch('/api/admin/cleanup', {
       method: 'POST',
@@ -214,10 +218,15 @@ export default function AdminPage() {
     })
     const data = await res.json()
     if (!res.ok) { showToast('Cleanup error'); return }
-    if (data.deleted === 0) {
-      setCleanupResult('No meets older than that threshold.')
+    if (data.deleted === 0 && data.athletesDeleted === 0) {
+      setCleanupResult('Nothing to clean up at that threshold.')
     } else {
-      setCleanupResult(`Deleted ${data.deleted} meet(s): ${data.meets.join(', ')}`)
+      const parts = [
+        `Removed ${data.athletesDeleted} unpurchased athlete image(s); kept ${data.athletesKept} purchased.`,
+      ]
+      if (data.deleted > 0) parts.push(`Fully deleted: ${data.meets.join(', ')}.`)
+      if (data.meetsTrimmed?.length) parts.push(`Trimmed (purchases kept): ${data.meetsTrimmed.join(', ')}.`)
+      setCleanupResult(parts.join(' '))
     }
     await fetchMeets(password)
   }

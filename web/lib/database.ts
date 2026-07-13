@@ -546,21 +546,85 @@ export async function deleteMeet(meetId: string): Promise<boolean> {
   return true
 }
 
-export async function cleanupOldMeets(daysOld: number): Promise<{ deleted: number; meets: string[] }> {
+/**
+ * Smart cleanup (FEATURES.md): for meets older than the cutoff, delete only
+ * UNPURCHASED athletes (images + rows). Athletes with a paid legacy purchase
+ * OR a paid v2 order item are kept forever — "download links never expire".
+ * Heats/meets are removed only once they hold no remaining athletes.
+ */
+export async function cleanupOldMeets(daysOld: number): Promise<{
+  deleted: number
+  meets: string[]
+  athletesDeleted: number
+  athletesKept: number
+  meetsTrimmed: string[]
+}> {
   const sql = getDb()
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - daysOld)
   const cutoffStr = cutoff.toISOString().slice(0, 10)  // YYYY-MM-DD
 
   const old = await sql`SELECT * FROM meets WHERE date < ${cutoffStr}`
-  const deleted: string[] = []
+  const deletedMeets: string[] = []
+  const trimmedMeets: string[] = []
+  let athletesDeleted = 0
+  let athletesKept    = 0
+
+  const { deleteAthleteFiles } = await import('./blob-storage')
 
   for (const meet of old as Meet[]) {
-    const ok = await deleteMeet(meet.id)
-    if (ok) deleted.push(meet.name)
+    // Athletes in this meet that are protected by a paid purchase or order item
+    const keptRows = await sql`
+      SELECT DISTINCT a.id
+      FROM athletes a
+      JOIN heats h ON h.id = a.heat_id
+      WHERE h.meet_id = ${meet.id}
+        AND (
+          EXISTS (SELECT 1 FROM purchases p
+                  WHERE p.athlete_id = a.id AND p.status = 'paid')
+          OR EXISTS (SELECT 1 FROM order_items oi
+                     JOIN orders o ON o.id = oi.order_id
+                     WHERE oi.athlete_id = a.id AND o.status = 'paid')
+        )
+    `
+    const keptIds = new Set((keptRows as Array<{ id: string }>).map(r => r.id))
+
+    // Delete files + rows for every unprotected athlete
+    const all = await sql`
+      SELECT a.* FROM athletes a
+      JOIN heats h ON h.id = a.heat_id
+      WHERE h.meet_id = ${meet.id}
+    `
+    for (const a of all as Athlete[]) {
+      if (keptIds.has(a.id)) { athletesKept++; continue }
+      await deleteAthleteFiles(a.image_path, a.frames_dir, a.frame_count).catch(() => {})
+      await sql`DELETE FROM athletes WHERE id = ${a.id}`
+      athletesDeleted++
+    }
+
+    // Drop heats that no longer hold any athletes
+    await sql`
+      DELETE FROM heats h
+      WHERE h.meet_id = ${meet.id}
+        AND NOT EXISTS (SELECT 1 FROM athletes a WHERE a.heat_id = h.id)
+    `
+
+    // Drop the meet itself once nothing remains
+    if (keptIds.size === 0) {
+      await sql`DELETE FROM meets WHERE id = ${meet.id}`
+      deletedMeets.push(meet.name)
+    } else {
+      trimmedMeets.push(meet.name)
+    }
   }
 
-  return { deleted: deleted.length, meets: deleted }
+  return {
+    deleted: deletedMeets.length,
+    meets: deletedMeets,
+    athletesDeleted,
+    athletesKept,
+    meetsTrimmed: trimmedMeets,
+  }
 }
 
 // ---------------------------------------------------------------------------
