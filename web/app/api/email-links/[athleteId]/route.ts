@@ -10,7 +10,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { getPurchaseBySession } from '@/lib/purchases'
-import { sendPurchaseEmail } from '@/lib/email'
+import { getOrderBySession } from '@/lib/orders'
+import { BUNDLES } from '@/lib/bundles'
+import { sendPurchaseEmail, sendOrderEmail } from '@/lib/email'
+import { formatEventLabel } from '@/lib/format'
 import type { Tier } from '@/lib/stripe'
 
 export const runtime = 'nodejs'
@@ -44,13 +47,48 @@ export async function POST(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  // Verify the token is a confirmed purchase for this athlete
+  // Verify the token is a confirmed purchase for this athlete —
+  // legacy per-athlete purchase, or a v2 combined order containing them
   const purchase = await getPurchaseBySession(token, athleteId)
+
   if (!purchase) {
-    return NextResponse.json(
-      { error: 'No confirmed purchase found for this token' },
-      { status: 403 },
-    )
+    const order = await getOrderBySession(token)
+    const inOrder = order?.items.some(i => i.athlete_id === athleteId)
+    if (!order?.order_number || !inOrder) {
+      return NextResponse.json(
+        { error: 'No confirmed purchase found for this token' },
+        { status: 403 },
+      )
+    }
+
+    // v2 order → resend the order confirmation (links to the order page)
+    try {
+      const items = await Promise.all(order.items.map(async (item) => {
+        const a = await getAthleteWithContext(item.athlete_id)
+        return {
+          athleteName: a
+            ? (a.first_name ? `${a.first_name} ${a.last_name}` : a.last_name)
+            : 'Athlete',
+          meetName: a?.heat.meet.name ?? '',
+          eventLabel: a
+            ? formatEventLabel(a.heat.event_num, a.heat.round, a.heat.heat_num, a.heat.event_name)
+            : '',
+          bundleTitle: BUNDLES[item.bundle].title,
+          priceLabel:  `$${(item.amount_cents / 100).toFixed(2)}`,
+        }
+      }))
+      await sendOrderEmail({
+        to:          email,
+        orderNumber: order.order_number,
+        token,
+        totalLabel:  `$${(order.amount_cents / 100).toFixed(2)}`,
+        items,
+      })
+      return NextResponse.json({ success: true })
+    } catch (err) {
+      console.error('Order email send failed:', err)
+      return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
+    }
   }
 
   try {

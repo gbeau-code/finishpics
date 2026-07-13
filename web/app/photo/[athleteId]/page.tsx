@@ -3,11 +3,12 @@ import Link from 'next/link'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { formatRound, formatTime, formatEventLabel } from '@/lib/format'
 import Banner from '@/app/components/ui/Banner'
+import Downloads from './Downloads'
 import FrameGallery from './FrameGallery'
 import PhotoImage from './PhotoImage'
-import PurchaseSection from './PurchaseSection'
 import Studio from './Studio'
 import { getPurchaseBySession, confirmPurchase } from '@/lib/purchases'
+import { resolveAccess } from '@/lib/orders'
 import { getStripe } from '@/lib/stripe'
 
 export const dynamic = 'force-dynamic'
@@ -59,8 +60,14 @@ export default async function PhotoPage({ params, searchParams }: Props) {
   const meet     = heat.meet
 
   const sessionId = session_id ?? null
-  const purchase  = sessionId
+  // Legacy reconciliation first (confirms a pending v1 purchase via Stripe if
+  // the webhook hasn't fired), then unified resolution across BOTH systems —
+  // a v2 order token unlocks this page too.
+  const purchase = sessionId
     ? await resolveSessionPurchase(sessionId, athleteId)
+    : null
+  const access = sessionId
+    ? await resolveAccess(sessionId, athleteId)
     : null
 
   const displayName = athlete.first_name
@@ -155,10 +162,10 @@ export default async function PhotoPage({ params, searchParams }: Props) {
                   athleteId={athleteId}
                   frameCount={athlete.frame_count!}
                   lastName={athlete.last_name}
-                  token={purchase?.tier === 'full' ? (sessionId ?? null) : null}
+                  token={access?.caps.frames ? (sessionId ?? null) : null}
                 />
                 <p className="mt-2 text-xs text-center text-fp-faint">
-                  {purchase?.tier === 'full'
+                  {access?.caps.frames
                     ? 'Click any frame to enlarge — then click the download button to save it'
                     : 'Included with the Full bundle'}
                 </p>
@@ -168,15 +175,18 @@ export default async function PhotoPage({ params, searchParams }: Props) {
 
           {/* ── Right rail: Studio (pre-purchase) or downloads (post) ────── */}
           <div className="min-w-0">
-            {purchase && sessionId ? (
+            {access?.source && sessionId ? (
               <div className="bg-fp-stage rounded-fp-card p-6">
-                <PurchaseSection
+                <Downloads
                   athleteId={athleteId}
-                  sessionId={sessionId}
-                  tier={purchase.tier}
+                  token={sessionId}
+                  caps={access.caps}
+                  socialFormats={(access.item?.config?.socials ?? []).map(s => s.format)}
                   hasFrames={hasFrames}
-                  lastName={athlete.last_name}
-                  purchaseEmail={purchase.email ?? null}
+                  orderHref={access.source === 'order'
+                    ? `/order/confirm?session_id=${encodeURIComponent(sessionId)}`
+                    : null}
+                  purchaseEmail={purchase?.email ?? null}
                 />
               </div>
             ) : (

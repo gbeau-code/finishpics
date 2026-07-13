@@ -1,4 +1,5 @@
 import Banner from '@/app/components/ui/Banner'
+import Downloads from '@/app/photo/[athleteId]/Downloads'
 import Studio from '@/app/photo/[athleteId]/Studio'
 
 /**
@@ -46,6 +47,22 @@ export default function DevStudioPage() {
           }}
           hasFrames
         />
+
+        {/* Post-purchase Downloads rail (order token variant) */}
+        <div className="mt-14">
+          <p className="fp-eyebrow text-[11px] text-fp-blue mb-3">Post-purchase state (dev sample)</p>
+          <div className="bg-fp-stage rounded-fp-card p-6">
+            <Downloads
+              athleteId="dev-sample"
+              token="cs_test_dev_sample"
+              caps={{ rawPhoto: true, formatted: true, frames: true }}
+              socialFormats={['post', 'story']}
+              hasFrames
+              orderHref="/order/confirm?session_id=cs_test_dev_sample"
+              purchaseEmail={null}
+            />
+          </div>
+        </div>
       </div>
     </div>
   )
