@@ -96,89 +96,124 @@ export function sanitizeLineConfig(input: unknown, maxSocials: number): LineConf
 
 // ---------------------------------------------------------------------------
 // Layout spec — consumed by BOTH the client preview and the Sharp renderer
+//
+// All numeric values are PIXELS AT BASE_W (the prototype's 360px-wide feed
+// preview, extracted verbatim from design/handoff/FinishPreview.dc.html).
+// Consumers scale linearly: px * (outputWidth / BASE_W). A 1080px deliverable
+// is exactly 3× the 360px preview, so preview and download stay pixel-locked.
 // ---------------------------------------------------------------------------
 
-/** A positioned text element. All values are fractions of output W/H. */
+export const BASE_W = 360
+
+export const COLORS = {
+  gold:  '#FDB927',
+  navy:  '#0A1B3D',
+  blue:  '#0E63E6',
+  white: '#ffffff',
+  ink:   '#151515',
+} as const
+
 export interface TextSpec {
-  /** Fraction of output width for the font size (e.g. 0.06 → 65px at 1080). */
+  /** Font size in px at BASE_W. */
   size: number
-  weight: 400 | 700 | 800
+  weight: 400 | 600 | 700 | 800
   italic?: boolean
   uppercase?: boolean
   color: string
   /** Letter-spacing in em. */
   tracking?: number
-  /** Use tabular numerals (times/places/prices). */
-  tnum?: boolean
+  /** Line-height multiplier. */
+  lineHeight?: number
+  /** CSS text-shadow (preview); server renders an equivalent blur layer. */
+  shadow?: string
 }
 
-export interface TemplateSpec {
-  /** Bottom overlay panel height as a fraction of output height (0 = none). */
-  panelHeight: number
-  /** Panel fill — solid color or gradient descriptor. */
-  panelFill: string
-  /** Inset padding as fraction of output width. */
-  pad: number
-  name:   TextSpec
-  team:   TextSpec
-  time:   TextSpec
-  /** "event · meet · venue" credit line. */
-  credit: TextSpec
-  /** Tag chip (PB/SB) styling; rendered only when tag !== 'none'. */
-  tagChip: { bg: string; color: string; text: TextSpec }
+export interface WhitegoldSpec {
+  kind: 'whitegold'
+  /** Full-frame scrim gradient (CSS string; server mirrors with SVG stops). */
+  scrim: string
+  brand: { offset: number; tile: number; tileRadius: number; text: TextSpec }
+  /** Bottom-centered block: [padTop, padX, padBottom] at BASE_W. */
+  pad: [number, number, number]
+  tag:  { rule: [number, number]; gap: number; marginBottom: number; text: TextSpec }
+  time: TextSpec
+  nameLine: TextSpec & { marginTop: number }
+  meetLine: TextSpec & { marginTop: number }
 }
 
-const GOLD  = '#FDB927'
-const NAVY  = '#0A1B3D'
-const WHITE = '#ffffff'
-const INK   = '#151515'
+export interface BarSpec {
+  kind: 'bar'
+  /** Bottom block padding [top, x, bottom] and its gradient background. */
+  pad: [number, number, number]
+  scrim: string
+  eventRow: { tile: number; tileRadius: number; gap: number; text: TextSpec }
+  timeRow:  { marginTop: number; gap: number; time: TextSpec; tag: TextSpec }
+  brand: { offset: number; tile: number; tileRadius: number; text: TextSpec }
+}
 
-/**
- * First-pass template specs (refine in P3 against the prototype).
- * Story format uses the same specs; vertical placement scales with panelHeight
- * being a fraction of the (taller) output.
- */
+export interface BigtimeSpec {
+  kind: 'bigtime'
+  scrim: string
+  /** Bottom-centered block: bottom offset + x padding. */
+  bottom: number
+  padX: number
+  tagPill: { padY: number; padX: number; text: TextSpec }
+  time: TextSpec & { marginTop: number }
+  nameLine: TextSpec & { marginTop: number }
+}
+
+export type TemplateSpec = WhitegoldSpec | BarSpec | BigtimeSpec
+
+const { gold, navy, blue, white, ink } = COLORS
+
 export const TEMPLATE_SPECS: Record<GraphicTemplate, TemplateSpec> = {
-  // White & gold: white bottom panel, navy name, big gold time
+  // White & Gold — centered hero time over a top+bottom scrim
   whitegold: {
-    panelHeight: 0.24,
-    panelFill:   WHITE,
-    pad:         0.055,
-    name:   { size: 0.052, weight: 800, italic: true, uppercase: true, color: NAVY, tracking: -0.02 },
-    team:   { size: 0.026, weight: 700, uppercase: true, color: '#5b6270', tracking: 0.08 },
-    time:   { size: 0.085, weight: 800, italic: true, color: GOLD, tnum: true, tracking: -0.02 },
-    credit: { size: 0.020, weight: 400, color: '#9aa1ab' },
-    tagChip: {
-      bg: GOLD, color: INK,
-      text: { size: 0.020, weight: 800, italic: true, uppercase: true, color: INK, tracking: 0.14 },
+    kind: 'whitegold',
+    scrim: 'linear-gradient(180deg, rgba(6,10,18,0.40) 0%, rgba(6,10,18,0) 24%, rgba(6,10,18,0) 38%, rgba(6,10,18,0.55) 64%, rgba(6,10,18,0.90) 100%)',
+    brand: {
+      offset: 16, tile: 16, tileRadius: 5,
+      text: { size: 11, weight: 800, uppercase: true, tracking: 0.16, color: white, shadow: '0 1px 6px rgba(0,0,0,0.7)' },
     },
+    pad: [34, 20, 24],
+    tag: {
+      rule: [22, 2], gap: 10, marginBottom: 11,
+      text: { size: 12, weight: 800, uppercase: true, tracking: 0.22, color: gold, shadow: '0 1px 8px rgba(0,0,0,0.85)' },
+    },
+    time: { size: 64, weight: 800, italic: true, color: white, tracking: -0.02, lineHeight: 0.84, shadow: '0 4px 22px rgba(0,0,0,0.8)' },
+    nameLine: { size: 12, weight: 800, uppercase: true, tracking: 0.18, color: white, marginTop: 13, shadow: '0 1px 8px rgba(0,0,0,0.7)' },
+    meetLine: { size: 11, weight: 700, uppercase: true, tracking: 0.16, color: gold, marginTop: 5, shadow: '0 1px 8px rgba(0,0,0,0.85)' },
   },
-  // Result bar: slim navy bar across the bottom, all content on one line
+  // Result Bar — navy gradient bar along the bottom, brand top-right
   bar: {
-    panelHeight: 0.13,
-    panelFill:   NAVY,
-    pad:         0.045,
-    name:   { size: 0.038, weight: 800, italic: true, uppercase: true, color: WHITE, tracking: -0.01 },
-    team:   { size: 0.022, weight: 700, uppercase: true, color: 'rgba(255,255,255,0.75)', tracking: 0.08 },
-    time:   { size: 0.055, weight: 800, italic: true, color: GOLD, tnum: true },
-    credit: { size: 0.018, weight: 400, color: 'rgba(255,255,255,0.5)' },
-    tagChip: {
-      bg: GOLD, color: INK,
-      text: { size: 0.018, weight: 800, italic: true, uppercase: true, color: INK, tracking: 0.14 },
+    kind: 'bar',
+    pad: [30, 18, 16],
+    scrim: 'linear-gradient(180deg, rgba(10,27,61,0) 0%, rgba(10,27,61,0.88) 78%)',
+    eventRow: {
+      tile: 18, tileRadius: 5, gap: 8,
+      text: { size: 11, weight: 700, uppercase: true, tracking: 0.12, color: white },
+    },
+    timeRow: {
+      marginTop: 7, gap: 9,
+      time: { size: 40, weight: 800, color: white, tracking: -0.02, lineHeight: 1 },
+      tag:  { size: 13, weight: 700, uppercase: true, tracking: 0.04, color: gold },
+    },
+    brand: {
+      offset: 14, tile: 14, tileRadius: 4,
+      text: { size: 11, weight: 700, color: white, shadow: '0 1px 3px rgba(0,0,0,0.5)' },
     },
   },
-  // Big time: minimal chrome, huge gold time over the photo, small credit
+  // Big Time — huge centered time low on the frame
   bigtime: {
-    panelHeight: 0,
-    panelFill:   'linear-gradient(transparent, rgba(10,27,61,0.85))', // photo-bottom scrim
-    pad:         0.055,
-    name:   { size: 0.042, weight: 800, italic: true, uppercase: true, color: WHITE, tracking: -0.01 },
-    team:   { size: 0.022, weight: 700, uppercase: true, color: 'rgba(255,255,255,0.75)', tracking: 0.08 },
-    time:   { size: 0.14,  weight: 800, italic: true, color: GOLD, tnum: true, tracking: -0.02 },
-    credit: { size: 0.018, weight: 400, color: 'rgba(255,255,255,0.6)' },
-    tagChip: {
-      bg: GOLD, color: INK,
-      text: { size: 0.018, weight: 800, italic: true, uppercase: true, color: INK, tracking: 0.14 },
+    kind: 'bigtime',
+    scrim: 'linear-gradient(180deg, rgba(10,27,61,0.05) 30%, rgba(10,27,61,0.82) 100%)',
+    bottom: 26,
+    padX: 16,
+    tagPill: {
+      padY: 4, padX: 10,
+      text: { size: 11, weight: 800, uppercase: true, tracking: 0.10, color: ink },
     },
+    time: { size: 72, weight: 800, color: white, tracking: -0.03, lineHeight: 0.9, marginTop: 8, shadow: '0 6px 24px rgba(0,0,0,0.4)' },
+    nameLine: { size: 12, weight: 600, uppercase: true, tracking: 0.14, color: 'rgba(255,255,255,0.92)', marginTop: 8 },
   },
 }
