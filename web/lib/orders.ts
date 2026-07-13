@@ -97,8 +97,8 @@ export async function createOrder(
     throw new Error('createOrder: conflict but no existing order found')
   }
 
-  const items: OrderItem[] = []
-  for (const line of lines) {
+  // Items are independent — insert them in parallel (one round trip each)
+  const items = await Promise.all(lines.map(async (line) => {
     const bundle = BUNDLES[line.bundle]
     const config = sanitizeLineConfig(line.config, bundle.caps.socials)
     const rows = await sql`
@@ -109,8 +109,8 @@ export async function createOrder(
          ${JSON.stringify(config)}, ${bundle.cents}, ${created_at})
       RETURNING *
     `
-    items.push(rowToOrderItem(rows[0]))
-  }
+    return rowToOrderItem(rows[0])
+  }))
 
   return { ...(orderRows[0] as Order), items }
 }
@@ -152,13 +152,30 @@ export async function getOrderBySession(
   return withItems(rows[0] as Order)
 }
 
-export async function getOrderByNumber(orderNumber: string): Promise<OrderWithItems | null> {
-  const sql = getDb()
-  const rows = await sql`
-    SELECT * FROM orders WHERE order_number = ${orderNumber} AND status = 'paid' LIMIT 1
-  `
-  if (!rows.length) return null
-  return withItems(rows[0] as Order)
+/**
+ * Reconcile a Stripe session into a confirmed order (webhook may not have
+ * fired yet). Shared by /order/confirm and the photo page so a v2 buyer is
+ * never shown the pre-purchase UI just because the webhook is slow.
+ */
+export async function reconcileOrderSession(sessionId: string): Promise<OrderWithItems | null> {
+  const existing = await getOrderBySession(sessionId).catch(() => null)
+  if (existing) return existing
+
+  try {
+    const { getStripe } = await import('./stripe')
+    const session = await getStripe().checkout.sessions.retrieve(sessionId)
+    if (session.payment_status === 'paid' && session.metadata?.fpKind === 'order') {
+      await confirmOrder(
+        session.id,
+        typeof session.payment_intent === 'string' ? session.payment_intent : null,
+        session.customer_details?.email ?? null,
+      )
+      return await getOrderBySession(sessionId)
+    }
+  } catch (err) {
+    console.error('Order session reconciliation failed:', err)
+  }
+  return null
 }
 
 async function withItems(order: Order): Promise<OrderWithItems> {
@@ -219,8 +236,21 @@ export async function resolveAccess(
   let item: OrderItem | null = null
   let source: Access['source'] = null
 
+  // The two systems are independent — look them up in parallel. The orders
+  // lookup is error-isolated so legacy tokens keep working even if the v2
+  // tables don't exist yet (deploy before the init-db migration ran).
+  const [order, purchase] = await Promise.all([
+    getOrderBySession(token).catch((err) => {
+      console.error('resolveAccess: orders lookup failed (migration not run?):', err)
+      return null
+    }),
+    getPurchaseBySession(token, athleteId).catch((err) => {
+      console.error('resolveAccess: purchases lookup failed:', err)
+      return null
+    }),
+  ])
+
   // v2 combined order
-  const order = await getOrderBySession(token)
   if (order) {
     const match = order.items.find(i => i.athlete_id === athleteId)
     if (match) {
@@ -231,7 +261,6 @@ export async function resolveAccess(
   }
 
   // legacy v1 per-athlete purchase
-  const purchase = await getPurchaseBySession(token, athleteId)
   if (purchase) {
     caps   = mergeCapabilities(caps, tierCapabilities(purchase.tier))
     source = source ?? 'purchase'

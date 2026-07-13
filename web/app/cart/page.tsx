@@ -7,11 +7,8 @@ import Banner from '@/app/components/ui/Banner'
 import Button from '@/app/components/ui/Button'
 import { useCart } from '@/app/components/CartContext'
 import { BUNDLES } from '@/lib/bundles'
-import { cartTotalCents } from '@/lib/cart'
-
-function dollars(cents: number): string {
-  return `$${(cents / 100).toFixed(2).replace(/\.00$/, '')}`
-}
+import { cartTotalCents, markCheckoutPending } from '@/lib/cart'
+import { formatCents } from '@/lib/format'
 
 export default function CartPage() {
   const { lines, removeLine, count } = useCart()
@@ -33,6 +30,7 @@ export default function CartPage() {
       })
       const data = await res.json()
       if (data.url) {
+        markCheckoutPending()   // lets /order/confirm know to clear the cart
         window.location.href = data.url
       } else {
         setError(data.error ?? 'Could not start checkout. Please try again.')
@@ -66,12 +64,6 @@ export default function CartPage() {
             <div className="space-y-3 mb-8">
               {lines.map(line => {
                 const b = BUNDLES[line.bundle]
-                const socialsNote = ({
-                  raw:         'Hi-res photo, no overlay',
-                  photosocial: 'Photo + formatted image',
-                  works:       'Photo + formatted + post & story',
-                  social:      'Post & story graphics, no photo file',
-                } as const)[line.bundle]
                 return (
                   <div
                     key={line.lineId}
@@ -99,7 +91,7 @@ export default function CartPage() {
                         {line.display.meetName} · {line.display.eventLabel}
                       </p>
                       <p className="text-xs text-fp-faint truncate mt-0.5">
-                        <span className="font-bold text-fp-navy">{b.title}</span> — {socialsNote}
+                        <span className="font-bold text-fp-navy">{b.title}</span> — {b.description}
                       </p>
                     </div>
 
@@ -131,12 +123,12 @@ export default function CartPage() {
             <div className="rounded-fp-card border border-fp-border bg-fp-stage p-6">
               <div className="flex items-center justify-between mb-4">
                 <p className="fp-display text-lg text-fp-ink-strong">Total</p>
-                <p className="tnum fp-display text-3xl text-fp-navy">{dollars(total)}</p>
+                <p className="tnum fp-display text-3xl text-fp-navy">{formatCents(total)}</p>
               </div>
               <Button onClick={checkout} disabled={placing} className="w-full" size="lg">
                 {placing
                   ? <><Loader2 className="fp-spin w-5 h-5" /> Starting checkout…</>
-                  : <>Checkout · {dollars(total)}</>}
+                  : <>Checkout · {formatCents(total)}</>}
               </Button>
               {error && <p className="text-sm text-red-600 text-center mt-3">{error}</p>}
               <p className="text-xs text-center text-fp-faint mt-3">

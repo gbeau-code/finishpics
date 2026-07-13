@@ -14,14 +14,16 @@ export async function GET(request: NextRequest) {
 
   const sql = neon(process.env.DATABASE_URL!)
 
-  // Sales = legacy per-athlete purchases UNION v2 order items (both paid)
+  // Sales = legacy per-athlete purchases UNION v2 order items (both paid).
+  // Buckets count by PRODUCT (tier/bundle), not price — the $5 'social'
+  // bundle must not inflate the raw-photo count.
   const rows = await sql`
     WITH sales AS (
-      SELECT p.athlete_id, p.amount_cents
+      SELECT p.athlete_id, p.amount_cents, p.tier AS product
       FROM purchases p
       WHERE p.status = 'paid'
       UNION ALL
-      SELECT oi.athlete_id, oi.amount_cents
+      SELECT oi.athlete_id, oi.amount_cents, oi.bundle AS product
       FROM order_items oi
       JOIN orders o ON o.id = oi.order_id
       WHERE o.status = 'paid'
@@ -31,11 +33,12 @@ export async function GET(request: NextRequest) {
       m.name,
       m.date,
       m.company_name,
-      COUNT(s.athlete_id)::int                                           AS sale_count,
-      COALESCE(SUM(s.amount_cents), 0)::int                              AS total_cents,
-      COUNT(s.athlete_id) FILTER (WHERE s.amount_cents = 500)::int       AS basic_count,
-      COUNT(s.athlete_id) FILTER (WHERE s.amount_cents = 1000)::int      AS enhanced_count,
-      COUNT(s.athlete_id) FILTER (WHERE s.amount_cents = 1500)::int      AS full_count
+      COUNT(s.athlete_id)::int                                                    AS sale_count,
+      COALESCE(SUM(s.amount_cents), 0)::int                                       AS total_cents,
+      COUNT(s.athlete_id) FILTER (WHERE s.product IN ('basic', 'raw'))::int        AS basic_count,
+      COUNT(s.athlete_id) FILTER (WHERE s.product IN ('enhanced', 'photosocial'))::int AS enhanced_count,
+      COUNT(s.athlete_id) FILTER (WHERE s.product IN ('full', 'works'))::int       AS full_count,
+      COUNT(s.athlete_id) FILTER (WHERE s.product = 'social')::int                 AS social_count
     FROM meets m
     LEFT JOIN heats    h ON h.meet_id    = m.id
     LEFT JOIN athletes a ON a.heat_id    = h.id
@@ -60,6 +63,7 @@ export async function GET(request: NextRequest) {
       basic_count:    r.basic_count,
       enhanced_count: r.enhanced_count,
       full_count:     r.full_count,
+      social_count:   r.social_count,
     }
   })
 

@@ -18,6 +18,7 @@ interface RevenueRow {
   basic_count: number
   enhanced_count: number
   full_count: number
+  social_count?: number
 }
 
 type HeatStatus = 'draft' | 'published' | 'hidden'
@@ -377,10 +378,11 @@ export default function AdminPage() {
                         <td className="py-2 pr-4 text-right text-gray-700">{row.sale_count}</td>
                         <td className="py-2 pr-4 text-right">
                           <span className="text-xs text-gray-500 space-x-1.5">
-                            {row.basic_count > 0 && <span title="Basic ($5)">{row.basic_count}×$5</span>}
-                            {row.enhanced_count > 0 && <span title="Enhanced ($10)">{row.enhanced_count}×$10</span>}
-                            {row.full_count > 0 && <span title="Full ($15)">{row.full_count}×$15</span>}
-                            {row.basic_count === 0 && row.enhanced_count === 0 && row.full_count === 0 && <span className="text-gray-300">—</span>}
+                            {row.basic_count > 0 && <span title="Raw photo ($5)">{row.basic_count}×$5</span>}
+                            {row.enhanced_count > 0 && <span title="Photo package ($10)">{row.enhanced_count}×$10</span>}
+                            {row.full_count > 0 && <span title="Full package ($15)">{row.full_count}×$15</span>}
+                            {(row.social_count ?? 0) > 0 && <span title="Social bundle ($5)">{row.social_count}×$5 social</span>}
+                            {row.basic_count === 0 && row.enhanced_count === 0 && row.full_count === 0 && (row.social_count ?? 0) === 0 && <span className="text-gray-300">—</span>}
                           </span>
                         </td>
                         <td className="py-2 pr-4 text-right text-gray-700">{formatCents(row.total_cents)}</td>

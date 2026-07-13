@@ -36,6 +36,24 @@ const TAGS: Array<{ key: GraphicTag; label: string }> = [
 
 const BUNDLE_ORDER: Bundle[] = ['raw', 'photosocial', 'works', 'social']
 
+/**
+ * Cheapest bundle that adds social graphics WITHOUT losing anything the
+ * currently selected bundle grants (upgrading raw/Photo must not silently
+ * drop the photo file the way switching to Social would).
+ */
+function studioUpgradeFor(current: Bundle): Bundle {
+  const cur = BUNDLES[current].caps
+  const candidates = BUNDLE_ORDER.filter(b => {
+    const c = BUNDLES[b].caps
+    return c.socials > 0 &&
+      (!cur.rawPhoto  || c.rawPhoto) &&
+      (!cur.formatted || c.formatted) &&
+      (!cur.frames    || c.frames)
+  })
+  candidates.sort((a, b) => BUNDLES[a].cents - BUNDLES[b].cents)
+  return candidates[0] ?? 'works'
+}
+
 interface Props {
   athleteId:  string
   previewSrc: string
@@ -46,7 +64,7 @@ interface Props {
 }
 
 export default function Studio({ athleteId, previewSrc, info, team, display, hasFrames }: Props) {
-  const { upsertLine, lineForAthlete, count } = useCart()
+  const { upsertLine, lineForAthlete, count, hydrated } = useCart()
 
   const [bundle,   setBundle]   = useState<Bundle>('photosocial')
   const [format,   setFormat]   = useState<GraphicFormat>('post')
@@ -55,11 +73,13 @@ export default function Studio({ athleteId, previewSrc, info, team, display, has
   const [focal,    setFocal]    = useState<FocalPoint>(DEFAULT_FOCAL)
   const [copied,   setCopied]   = useState(false)
   const [toast,    setToast]    = useState<{ edited: boolean } | null>(null)
-  const [hydrated, setHydrated] = useState(false)
+  const [restored, setRestored] = useState(false)
 
-  // Re-opening a photo already in the cart loads its saved styling
+  // Re-opening a photo already in the cart loads its saved styling.
+  // Must wait for the cart's localStorage hydration (`hydrated`) — this
+  // child effect fires before CartProvider's own hydration effect.
   useEffect(() => {
-    if (hydrated) return
+    if (!hydrated || restored) return
     const line = lineForAthlete(athleteId)
     if (line) {
       setBundle(line.bundle)
@@ -68,9 +88,9 @@ export default function Studio({ athleteId, previewSrc, info, team, display, has
         setFormat(s.format); setTemplate(s.template); setTag(s.tag); setFocal(s.focal)
       }
     }
-    setHydrated(true)
+    setRestored(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineForAthlete, athleteId, hydrated])
+  }, [hydrated, restored, athleteId])
 
   const bdef = BUNDLES[bundle]
   const studioUnlocked = bdef.caps.socials > 0
@@ -138,7 +158,7 @@ export default function Studio({ athleteId, previewSrc, info, team, display, has
                 <span className="flex-1 min-w-0">
                   <span className={`block text-[14px] font-extrabold ${selected ? 'text-fp-blue' : 'text-fp-ink-strong'}`}>
                     {b.title}
-                    {key === 'works' && hasFrames && (
+                    {b.caps.frames && hasFrames && (
                       <span className="ml-2 text-[10px] font-extrabold italic uppercase tracking-wider bg-fp-gold text-fp-ink-strong px-2 py-0.5 rounded-full">
                         + camera frames
                       </span>
@@ -159,15 +179,18 @@ export default function Studio({ athleteId, previewSrc, info, team, display, has
       <div className={studioUnlocked ? '' : 'opacity-60'}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="fp-display text-[15px] text-fp-ink-strong">Style your graphic</h3>
-          {!studioUnlocked && (
-            <button
-              type="button"
-              onClick={() => setBundle('works')}
-              className="flex items-center gap-1.5 text-xs font-bold text-fp-blue hover:underline"
-            >
-              <Lock className="w-3 h-3" /> Unlock with Full · {BUNDLES.works.label}
-            </button>
-          )}
+          {!studioUnlocked && (() => {
+            const upgrade = studioUpgradeFor(bundle)
+            return (
+              <button
+                type="button"
+                onClick={() => setBundle(upgrade)}
+                className="flex items-center gap-1.5 text-xs font-bold text-fp-blue hover:underline"
+              >
+                <Lock className="w-3 h-3" /> Unlock with {BUNDLES[upgrade].title} · {BUNDLES[upgrade].label}
+              </button>
+            )
+          })()}
         </div>
 
         {/* format */}

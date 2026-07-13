@@ -1,14 +1,14 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
-import { formatRound, formatTime, formatEventLabel } from '@/lib/format'
+import { formatRound, formatTime, formatEventLabel, formatMeetDate, formatPlace } from '@/lib/format'
 import Banner from '@/app/components/ui/Banner'
 import Downloads from './Downloads'
 import FrameGallery from './FrameGallery'
 import PhotoImage from './PhotoImage'
 import Studio from './Studio'
 import { getPurchaseBySession, confirmPurchase } from '@/lib/purchases'
-import { resolveAccess } from '@/lib/orders'
+import { resolveAccess, reconcileOrderSession } from '@/lib/orders'
 import { getStripe } from '@/lib/stripe'
 
 export const dynamic = 'force-dynamic'
@@ -66,9 +66,15 @@ export default async function PhotoPage({ params, searchParams }: Props) {
   const purchase = sessionId
     ? await resolveSessionPurchase(sessionId, athleteId)
     : null
-  const access = sessionId
+  let access = sessionId
     ? await resolveAccess(sessionId, athleteId)
     : null
+  if (sessionId && !access?.source) {
+    // Possibly a v2 order whose webhook hasn't fired yet — reconcile with
+    // Stripe directly (same path /order/confirm uses), then re-resolve
+    const order = await reconcileOrderSession(sessionId)
+    if (order) access = await resolveAccess(sessionId, athleteId)
+  }
 
   const displayName = athlete.first_name
     ? `${athlete.first_name} ${athlete.last_name}`
@@ -79,9 +85,7 @@ export default async function PhotoPage({ params, searchParams }: Props) {
   const hasFrames  = (athlete.frame_count ?? 0) > 0
   const timeLabel  = athlete.finish_time != null ? formatTime(athlete.finish_time) : null
 
-  const meetDate = new Date(meet.date + 'T00:00:00').toLocaleDateString('en-US', {
-    month: 'long', day: 'numeric', year: 'numeric',
-  })
+  const meetDate = formatMeetDate(meet.date)
 
   const previewInfo = {
     name:       displayName,
@@ -108,7 +112,7 @@ export default async function PhotoPage({ params, searchParams }: Props) {
         <div className="text-right">
           {athlete.place != null && (
             <p className="fp-eyebrow text-[11px] text-fp-gold mb-1">
-              {placeLabel(athlete.place)}
+              {formatPlace(athlete.place)} place
             </p>
           )}
           {timeLabel && (
@@ -218,16 +222,6 @@ export default async function PhotoPage({ params, searchParams }: Props) {
       </div>
     </div>
   )
-}
-
-function placeLabel(place: number): string {
-  const suffix =
-    place % 100 >= 11 && place % 100 <= 13 ? 'th'
-    : place % 10 === 1 ? 'st'
-    : place % 10 === 2 ? 'nd'
-    : place % 10 === 3 ? 'rd'
-    : 'th'
-  return `${place}${suffix} place`
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ athleteId: string }> }) {

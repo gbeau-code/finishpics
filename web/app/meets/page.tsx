@@ -1,19 +1,15 @@
 import Link from 'next/link'
 import { MapPin, Calendar } from 'lucide-react'
 import { getRecentMeets } from '@/lib/database'
+import { formatMeetDate } from '@/lib/format'
 import Banner from '../components/ui/Banner'
 import SpeedLines from '../components/ui/SpeedLines'
+import GlobalSearch from './GlobalSearch'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'All Meets — FinishPics',
-}
-
-function formatMeetDate(dateStr: string) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
-    month: 'long', day: 'numeric', year: 'numeric',
-  })
 }
 
 export default async function MeetsPage() {
@@ -28,6 +24,7 @@ export default async function MeetsPage() {
       />
 
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <GlobalSearch />
         {meets.length === 0 ? (
           <div className="text-center py-20">
             <p className="fp-display text-2xl text-fp-ink-strong mb-2">No meets yet</p>

@@ -224,8 +224,11 @@ async function focalCoverCrop(
   const scale = Math.max(outW / sw, outH / sh)
   const cropW = Math.min(sw, Math.round(outW / scale))
   const cropH = Math.min(sh, Math.round(outH / scale))
-  const left  = Math.round(Math.max(0, Math.min(sw - cropW, (focalX / 100) * sw - cropW / 2)))
-  const top   = Math.round(Math.max(0, Math.min(sh - cropH, (focalY / 100) * sh - cropH / 2)))
+  // CSS background-position semantics — the SAME math the FinishPreview photo
+  // layer uses (backgroundPosition: x% y% → offset = p% × (src − crop)), so
+  // the delivered crop matches the approved preview exactly.
+  const left = Math.round(Math.max(0, Math.min(sw - cropW, (focalX / 100) * (sw - cropW))))
+  const top  = Math.round(Math.max(0, Math.min(sh - cropH, (focalY / 100) * (sh - cropH))))
 
   return sharp(source)
     .extract({ left, top, width: cropW, height: cropH })
@@ -311,9 +314,13 @@ export async function renderSocialGraphic(
     const time = info.timeLabel ? await textLayer(info.timeLabel, spec.timeRow.time, k) : null
     const tag  = tagLabel ? await textLayer(tagLabel, spec.timeRow.tag, k) : null
 
-    const rowH   = Math.max(spec.eventRow.tile * k, eventText.height)
-    const timeH  = time ? time.height : 0
-    const blockH = padT * k + rowH + spec.timeRow.marginTop * k + timeH + padB * k
+    // Second row holds the time and/or the tag — the tag renders even with no
+    // time (matching FinishPreview, which shows them independently)
+    const rowH    = Math.max(spec.eventRow.tile * k, eventText.height)
+    const row2H   = Math.max(time?.height ?? 0, tag?.height ?? 0)
+    const blockH  = padT * k + rowH
+      + (row2H > 0 ? spec.timeRow.marginTop * k + row2H : 0)
+      + padB * k
     layers.push({ input: scrimSvg(spec.scrim, W, Math.round(blockH)), left: 0, top: Math.round(H - blockH) })
 
     let y = H - blockH + padT * k
@@ -324,10 +331,12 @@ export async function renderSocialGraphic(
 
     if (time) {
       await addText(info.timeLabel!, spec.timeRow.time, time, padX * k, y)
-      if (tag) {
-        // baseline-ish alignment with the big time
-        await addText(tagLabel!, spec.timeRow.tag, tag, padX * k + time.width + spec.timeRow.gap * k, y + time.height - tag.height - 4 * k)
-      }
+    }
+    if (tag) {
+      // after the time (baseline-ish aligned), or alone at the left edge
+      const tagLeft = time ? padX * k + time.width + spec.timeRow.gap * k : padX * k
+      const tagTop  = time ? y + time.height - tag.height - 4 * k : y
+      await addText(tagLabel!, spec.timeRow.tag, tag, tagLeft, tagTop)
     }
 
     // Brand, top-right: blue tile + wordmark

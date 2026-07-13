@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getMeet } from '@/lib/database'
+import { formatMeetDate } from '@/lib/format'
 import Banner from '@/app/components/ui/Banner'
 import MeetSearch from './MeetSearch'
 
@@ -15,9 +16,7 @@ export default async function MeetPage({ params }: Props) {
   const meet = await getMeet(meetId)
   if (!meet) notFound()
 
-  const meetDate = new Date(meet.date + 'T00:00:00').toLocaleDateString('en-US', {
-    month: 'long', day: 'numeric', year: 'numeric',
-  })
+  const meetDate = formatMeetDate(meet.date)
 
   return (
     <div>

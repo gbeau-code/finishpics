@@ -288,9 +288,19 @@ export async function getAthleteWithContext(id: string): Promise<AthleteWithCont
   return rowToAthleteWithContext(rows[0])
 }
 
-export async function searchAthletes(query: string, meetId?: string | null, limit = 20): Promise<AthleteWithContext[]> {
+export async function searchAthletes(
+  query: string,
+  meetId?: string | null,
+  limit = 20,
+  filters?: { event?: string | null; round?: string | null; heat?: string | null },
+): Promise<AthleteWithContext[]> {
   const sql = getDb()
   const q   = query.toLowerCase().trim()
+  // Event filters apply in SQL (before LIMIT) so filtered matches never
+  // vanish behind the row cap. Only used with a meetId (the chips UI).
+  const fEvent = filters?.event ?? null
+  const fRound = filters?.round ?? null
+  const fHeat  = filters?.heat  ?? null
 
   const rows = meetId
     ? await sql`
@@ -321,6 +331,9 @@ export async function searchAthletes(query: string, meetId?: string | null, limi
         WHERE
           h.status = 'published'
           AND m.id = ${meetId}
+          AND (${fEvent}::text IS NULL OR h.event_num = ${fEvent})
+          AND (${fRound}::text IS NULL OR h.round     = ${fRound})
+          AND (${fHeat}::text  IS NULL OR h.heat_num  = ${fHeat})
           AND (
             LOWER(a.first_name) LIKE ${'%' + q + '%'}
             OR LOWER(a.last_name)  LIKE ${'%' + q + '%'}
@@ -388,7 +401,7 @@ export async function getPublishedEventsForMeet(meetId: string): Promise<MeetEve
       AND h.status  = 'published'
     GROUP BY h.event_num, h.round, h.heat_num, h.event_name
     ORDER BY
-      NULLIF(regexp_replace(h.event_num, '\D', '', 'g'), '')::int NULLS LAST,
+      NULLIF(regexp_replace(h.event_num, '[^0-9]', '', 'g'), '')::int NULLS LAST,
       h.event_num, h.round, h.heat_num
   `
   return rows as MeetEvent[]
@@ -507,43 +520,120 @@ export async function getAllMeetsWithHeats(): Promise<MeetWithHeats[]> {
   })
 }
 
-export async function deleteHeat(heatId: string): Promise<boolean> {
+// ---------------------------------------------------------------------------
+// Purchase protection — "download links never expire"
+//
+// An athlete is protected from deletion when they have a PAID purchase or
+// order item in either system, or a PENDING one younger than the grace window
+// (a checkout in flight — deleting mid-payment would charge the customer for
+// nothing). Deleting an athlete row would CASCADE their purchases/order_items
+// away, so every delete path (manual + cleanup) must consult this.
+// ---------------------------------------------------------------------------
+
+const PENDING_GRACE_HOURS = 24
+
+/** IDs (among the given set) of athletes protected by a purchase/order. */
+async function protectedIdsAmong(athleteIds: string[]): Promise<Set<string>> {
+  if (!athleteIds.length) return new Set()
   const sql = getDb()
+  const cutoff = new Date(Date.now() - PENDING_GRACE_HOURS * 3600 * 1000).toISOString()
 
-  // Fetch athletes so we can clean up blob files
-  const athletes = await sql`SELECT * FROM athletes WHERE heat_id = ${heatId}`
-  const heat     = await sql`SELECT * FROM heats WHERE id = ${heatId} LIMIT 1`
-  if (!heat.length) return false
-
-  // Clean up stored images (best-effort)
-  const { deleteAthleteFiles } = await import('./blob-storage')
-  for (const a of athletes as Athlete[]) {
-    await deleteAthleteFiles(a.image_path, a.frames_dir, a.frame_count).catch(() => {})
+  try {
+    const rows = await sql`
+      SELECT DISTINCT a.id
+      FROM athletes a
+      WHERE a.id = ANY(${athleteIds})
+        AND (
+          EXISTS (SELECT 1 FROM purchases p
+                  WHERE p.athlete_id = a.id
+                    AND (p.status = 'paid'
+                         OR (p.status = 'pending' AND p.created_at > ${cutoff})))
+          OR EXISTS (SELECT 1 FROM order_items oi
+                     JOIN orders o ON o.id = oi.order_id
+                     WHERE oi.athlete_id = a.id
+                       AND (o.status = 'paid'
+                            OR (o.status = 'pending' AND o.created_at > ${cutoff})))
+        )
+    `
+    return new Set((rows as Array<{ id: string }>).map(r => r.id))
+  } catch (err) {
+    // orders/order_items tables may not exist yet (migration not run) —
+    // fall back to purchases-only rather than failing the whole delete
+    console.error('protectedIdsAmong: order tables unavailable, falling back to purchases only:', err)
+    const rows = await sql`
+      SELECT DISTINCT a.id
+      FROM athletes a
+      WHERE a.id = ANY(${athleteIds})
+        AND EXISTS (SELECT 1 FROM purchases p
+                    WHERE p.athlete_id = a.id
+                      AND (p.status = 'paid'
+                           OR (p.status = 'pending' AND p.created_at > ${cutoff})))
+    `
+    return new Set((rows as Array<{ id: string }>).map(r => r.id))
   }
-
-  await sql`DELETE FROM heats WHERE id = ${heatId}`
-  return true
 }
 
-export async function deleteMeet(meetId: string): Promise<boolean> {
+/** Delete blob files + rows for the given athletes (already vetted as unprotected). */
+async function deleteAthleteRows(athletes: Athlete[]): Promise<void> {
+  if (!athletes.length) return
+  const sql = getDb()
+  const { deleteAthleteFiles } = await import('./blob-storage')
+  await Promise.all(athletes.map(a =>
+    deleteAthleteFiles(a.image_path, a.frames_dir, a.frame_count).catch(() => {}),
+  ))
+  await sql`DELETE FROM athletes WHERE id = ANY(${athletes.map(a => a.id)})`
+}
+
+export interface DeleteResult {
+  found: boolean
+  /** Athletes kept because a purchase protects them (container rows kept too). */
+  keptAthletes: number
+}
+
+export async function deleteHeat(heatId: string): Promise<DeleteResult> {
+  const sql = getDb()
+
+  const heat = await sql`SELECT * FROM heats WHERE id = ${heatId} LIMIT 1`
+  if (!heat.length) return { found: false, keptAthletes: 0 }
+
+  const athletes = (await sql`SELECT * FROM athletes WHERE heat_id = ${heatId}`) as Athlete[]
+  const kept = await protectedIdsAmong(athletes.map(a => a.id))
+
+  await deleteAthleteRows(athletes.filter(a => !kept.has(a.id)))
+
+  // Only remove the heat itself when no purchased athletes remain in it
+  if (kept.size === 0) {
+    await sql`DELETE FROM heats WHERE id = ${heatId}`
+  }
+  return { found: true, keptAthletes: kept.size }
+}
+
+export async function deleteMeet(meetId: string): Promise<DeleteResult> {
   const sql = getDb()
 
   const meet = await sql`SELECT * FROM meets WHERE id = ${meetId} LIMIT 1`
-  if (!meet.length) return false
+  if (!meet.length) return { found: false, keptAthletes: 0 }
 
-  // Fetch all athletes in this meet so we can clean up blob files
-  const athletes = await sql`
+  const athletes = (await sql`
     SELECT a.* FROM athletes a
     JOIN heats h ON h.id = a.heat_id
     WHERE h.meet_id = ${meetId}
-  `
-  const { deleteAthleteFiles } = await import('./blob-storage')
-  for (const a of athletes as Athlete[]) {
-    await deleteAthleteFiles(a.image_path, a.frames_dir, a.frame_count).catch(() => {})
-  }
+  `) as Athlete[]
+  const kept = await protectedIdsAmong(athletes.map(a => a.id))
 
-  await sql`DELETE FROM meets WHERE id = ${meetId}`  // cascades to heats + athletes
-  return true
+  await deleteAthleteRows(athletes.filter(a => !kept.has(a.id)))
+
+  if (kept.size === 0) {
+    await sql`DELETE FROM meets WHERE id = ${meetId}`  // cascades to heats + athletes
+  } else {
+    // Purchased athletes remain — drop only the now-empty heats
+    await sql`
+      DELETE FROM heats h
+      WHERE h.meet_id = ${meetId}
+        AND NOT EXISTS (SELECT 1 FROM athletes a WHERE a.heat_id = h.id)
+    `
+  }
+  return { found: true, keptAthletes: kept.size }
 }
 
 /**
@@ -570,37 +660,20 @@ export async function cleanupOldMeets(daysOld: number): Promise<{
   let athletesDeleted = 0
   let athletesKept    = 0
 
-  const { deleteAthleteFiles } = await import('./blob-storage')
-
   for (const meet of old as Meet[]) {
-    // Athletes in this meet that are protected by a paid purchase or order item
-    const keptRows = await sql`
-      SELECT DISTINCT a.id
-      FROM athletes a
-      JOIN heats h ON h.id = a.heat_id
-      WHERE h.meet_id = ${meet.id}
-        AND (
-          EXISTS (SELECT 1 FROM purchases p
-                  WHERE p.athlete_id = a.id AND p.status = 'paid')
-          OR EXISTS (SELECT 1 FROM order_items oi
-                     JOIN orders o ON o.id = oi.order_id
-                     WHERE oi.athlete_id = a.id AND o.status = 'paid')
-        )
-    `
-    const keptIds = new Set((keptRows as Array<{ id: string }>).map(r => r.id))
-
-    // Delete files + rows for every unprotected athlete
-    const all = await sql`
+    const all = (await sql`
       SELECT a.* FROM athletes a
       JOIN heats h ON h.id = a.heat_id
       WHERE h.meet_id = ${meet.id}
-    `
-    for (const a of all as Athlete[]) {
-      if (keptIds.has(a.id)) { athletesKept++; continue }
-      await deleteAthleteFiles(a.image_path, a.frames_dir, a.frame_count).catch(() => {})
-      await sql`DELETE FROM athletes WHERE id = ${a.id}`
-      athletesDeleted++
-    }
+    `) as Athlete[]
+
+    // Protection covers paid rows AND fresh pending checkouts (grace window)
+    const keptIds = await protectedIdsAmong(all.map(a => a.id))
+    athletesKept += keptIds.size
+
+    const toDelete = all.filter(a => !keptIds.has(a.id))
+    await deleteAthleteRows(toDelete)
+    athletesDeleted += toDelete.length
 
     // Drop heats that no longer hold any athletes
     await sql`

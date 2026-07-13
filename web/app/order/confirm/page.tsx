@@ -1,11 +1,9 @@
 import Link from 'next/link'
 import { CheckCircle2, Download, Image as ImageIcon, Sparkles, Clapperboard } from 'lucide-react'
 import { getAthleteWithContext } from '@/lib/database'
-import { getOrderBySession, confirmOrder } from '@/lib/orders'
-import type { OrderWithItems } from '@/lib/orders'
-import { getStripe } from '@/lib/stripe'
+import { reconcileOrderSession } from '@/lib/orders'
 import { BUNDLES } from '@/lib/bundles'
-import { formatTime, formatEventLabel } from '@/lib/format'
+import { formatTime, formatEventLabel, formatCents, formatMeetDate } from '@/lib/format'
 import SpeedLines from '@/app/components/ui/SpeedLines'
 import Button from '@/app/components/ui/Button'
 import ClearCart from './ClearCart'
@@ -18,32 +16,6 @@ interface Props {
   searchParams: Promise<{ session_id?: string }>
 }
 
-// ---------------------------------------------------------------------------
-// Reconcile Stripe session → order (webhook may not have fired yet)
-// ---------------------------------------------------------------------------
-async function resolveOrder(sessionId: string): Promise<OrderWithItems | null> {
-  const existing = await getOrderBySession(sessionId)
-  if (existing) return existing
-
-  try {
-    const session = await getStripe().checkout.sessions.retrieve(sessionId)
-    if (session.payment_status === 'paid' && session.metadata?.fpKind === 'order') {
-      await confirmOrder(
-        session.id,
-        typeof session.payment_intent === 'string' ? session.payment_intent : null,
-        session.customer_details?.email ?? null,
-      )
-      return await getOrderBySession(sessionId)
-    }
-  } catch (err) {
-    console.error('Order session retrieval failed:', err)
-  }
-  return null
-}
-
-function dollars(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`
-}
 
 // ---------------------------------------------------------------------------
 // Page
@@ -51,7 +23,7 @@ function dollars(cents: number): string {
 export default async function OrderConfirmPage({ searchParams }: Props) {
   const { session_id } = await searchParams
 
-  const order = session_id ? await resolveOrder(session_id) : null
+  const order = session_id ? await reconcileOrderSession(session_id) : null
 
   if (!order) {
     return (
@@ -92,7 +64,7 @@ export default async function OrderConfirmPage({ searchParams }: Props) {
           <p className="text-sm text-white/75">
             Order <span className="tnum font-extrabold text-white">{order.order_number}</span>
             {order.email && <> · {order.email}</>} · {orderDate} ·{' '}
-            <span className="tnum">{dollars(order.amount_cents)}</span>
+            <span className="tnum">{formatCents(order.amount_cents)}</span>
           </p>
           <p className="text-xs text-white/50 mt-3">
             Bookmark this page — your download links never expire.

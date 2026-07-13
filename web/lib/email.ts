@@ -260,3 +260,41 @@ export async function sendOrderEmail(params: OrderEmailParams): Promise<void> {
 
   if (error) throw new Error(`Resend error: ${error.message}`)
 }
+
+/**
+ * Build + send the order confirmation for a confirmed v2 order — the ONE
+ * place order-email content is assembled (webhook and resend both call this).
+ */
+export async function sendOrderConfirmation(
+  order: import('./orders').OrderWithItems,
+  to: string,
+): Promise<void> {
+  if (!order.order_number) throw new Error('sendOrderConfirmation: order not confirmed yet')
+
+  const { getAthleteWithContext } = await import('./database')
+  const { BUNDLES } = await import('./bundles')
+  const { formatEventLabel, formatCents } = await import('./format')
+
+  const items = await Promise.all(order.items.map(async (item) => {
+    const a = await getAthleteWithContext(item.athlete_id)
+    return {
+      athleteName: a
+        ? (a.first_name ? `${a.first_name} ${a.last_name}` : a.last_name)
+        : 'Athlete',
+      meetName: a?.heat.meet.name ?? '',
+      eventLabel: a
+        ? formatEventLabel(a.heat.event_num, a.heat.round, a.heat.heat_num, a.heat.event_name)
+        : '',
+      bundleTitle: BUNDLES[item.bundle].title,
+      priceLabel:  formatCents(item.amount_cents),
+    }
+  }))
+
+  await sendOrderEmail({
+    to,
+    orderNumber: order.order_number,
+    token:       order.stripe_session_id,
+    totalLabel:  formatCents(order.amount_cents),
+    items,
+  })
+}

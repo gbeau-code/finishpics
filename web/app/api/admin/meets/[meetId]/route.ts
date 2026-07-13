@@ -14,10 +14,16 @@ export async function DELETE(
 
   const { meetId } = await params
 
-  const deleted = await deleteMeet(meetId)
-  if (!deleted) {
+  const result = await deleteMeet(meetId)
+  if (!result.found) {
     return NextResponse.json({ error: 'Meet not found' }, { status: 404 })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({
+    ok: true,
+    keptAthletes: result.keptAthletes,
+    ...(result.keptAthletes > 0 && {
+      message: `${result.keptAthletes} purchased athlete(s) kept — their download links stay live`,
+    }),
+  })
 }

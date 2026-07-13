@@ -58,6 +58,26 @@ export function formatPlace(place: number | null | undefined): string {
 }
 
 /**
+ * Format a cents amount as dollars: 1500 → "$15", 1250 → "$12.50".
+ * One formatter for cart, order page, admin, and emails — keep in sync.
+ */
+export function formatCents(cents: number): string {
+  const s = (cents / 100).toFixed(2)
+  return `$${s.endsWith('.00') ? s.slice(0, -3) : s}`
+}
+
+/**
+ * Format a YYYY-MM-DD meet date for display.
+ * 'long' → "June 12, 2026" · 'short' → "Jun 12, 2026"
+ * (T00:00:00 pins the date to local time so it doesn't shift a day.)
+ */
+export function formatMeetDate(dateStr: string, style: 'long' | 'short' = 'long'): string {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+    month: style, day: 'numeric', year: 'numeric',
+  })
+}
+
+/**
  * Format event/round/heat into a readable event description.
  * e.g. "Event 1 · Final · Heat 2"
  */

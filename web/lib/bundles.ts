@@ -71,7 +71,9 @@ export const BUNDLES = {
 export type Bundle = keyof typeof BUNDLES
 
 export function isBundle(x: unknown): x is Bundle {
-  return typeof x === 'string' && x in BUNDLES
+  // Own-property check — `in` would walk the prototype chain and accept
+  // e.g. 'constructor' as a bundle name
+  return typeof x === 'string' && Object.prototype.hasOwnProperty.call(BUNDLES, x)
 }
 
 // ---------------------------------------------------------------------------

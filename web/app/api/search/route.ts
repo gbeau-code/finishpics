@@ -15,10 +15,9 @@ export async function GET(request: NextRequest) {
   // Browse-by-event: no query needed when an event filter is set within a meet
   let results
   if (q) {
-    results = await searchAthletes(q, meetId)
-    if (event) results = results.filter(a => a.heat.event_num === event)
-    if (round) results = results.filter(a => a.heat.round === round)
-    if (heat)  results = results.filter(a => a.heat.heat_num === heat)
+    // Filters are pushed into SQL (pre-LIMIT) so matches never vanish
+    // behind the row cap
+    results = await searchAthletes(q, meetId, 20, { event, round, heat })
   } else if (meetId && event) {
     results = await listAthletesByEvent(meetId, event, round, heat)
   } else {

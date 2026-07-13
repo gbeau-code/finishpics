@@ -40,6 +40,28 @@ async function main() {
     fs.writeFileSync(file, buf)
     console.log('wrote', file, Math.round(buf.length / 1024) + 'KB')
   }
+
+  // Edge cases: tag with NO finish time (bar), and an off-center focal crop.
+  // Uses a real FinishLynx export when C:\meets is present.
+  const realSrc = 'C:/meets/17-1-1-Lincoln-unknown.jpg'
+  const edgeSource = fs.existsSync(realSrc) ? fs.readFileSync(realSrc) : source
+  const noTime = { ...info, name: 'Lincoln', team: 'Lincoln', timeLabel: null }
+
+  let buf = await renderSocialGraphic(
+    edgeSource, noTime,
+    { format: 'post', template: 'bar', tag: 'pb', focal: { x: 50, y: 42 } },
+    { watermark: false },
+  )
+  fs.writeFileSync(path.join(OUT, 'edge-bar-notime-pb.jpg'), buf)
+  console.log('wrote edge-bar-notime-pb.jpg', Math.round(buf.length / 1024) + 'KB')
+
+  buf = await renderSocialGraphic(
+    edgeSource, info,
+    { format: 'story', template: 'bigtime', tag: 'none', focal: { x: 25, y: 42 } },
+    { watermark: false },
+  )
+  fs.writeFileSync(path.join(OUT, 'edge-story-focal25.jpg'), buf)
+  console.log('wrote edge-story-focal25.jpg', Math.round(buf.length / 1024) + 'KB')
 }
 
 main().catch(e => { console.error(e); process.exit(1) })

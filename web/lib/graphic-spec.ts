@@ -46,10 +46,6 @@ export interface LineConfig {
 
 export const DEFAULT_FOCAL: FocalPoint = { x: 50, y: 42 }
 
-export const DEFAULT_SOCIAL: SocialGraphicConfig = {
-  format: 'post', template: 'whitegold', tag: 'none', focal: DEFAULT_FOCAL,
-}
-
 export const FORMAT_DIMENSIONS: Record<GraphicFormat, { w: number; h: number }> = {
   post:  { w: 1080, h: 1080 },
   story: { w: 1080, h: 1920 },

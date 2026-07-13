@@ -40,10 +40,16 @@ export async function DELETE(
 
   const { heatId } = await params
 
-  const deleted = await deleteHeat(heatId)
-  if (!deleted) {
+  const result = await deleteHeat(heatId)
+  if (!result.found) {
     return NextResponse.json({ error: 'Heat not found' }, { status: 404 })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({
+    ok: true,
+    keptAthletes: result.keptAthletes,
+    ...(result.keptAthletes > 0 && {
+      message: `${result.keptAthletes} purchased athlete(s) kept — their download links stay live`,
+    }),
+  })
 }

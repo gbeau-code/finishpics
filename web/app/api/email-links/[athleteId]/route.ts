@@ -11,9 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { getPurchaseBySession } from '@/lib/purchases'
 import { getOrderBySession } from '@/lib/orders'
-import { BUNDLES } from '@/lib/bundles'
-import { sendPurchaseEmail, sendOrderEmail } from '@/lib/email'
-import { formatEventLabel } from '@/lib/format'
+import { sendPurchaseEmail, sendOrderConfirmation } from '@/lib/email'
 import type { Tier } from '@/lib/stripe'
 
 export const runtime = 'nodejs'
@@ -63,27 +61,7 @@ export async function POST(
 
     // v2 order → resend the order confirmation (links to the order page)
     try {
-      const items = await Promise.all(order.items.map(async (item) => {
-        const a = await getAthleteWithContext(item.athlete_id)
-        return {
-          athleteName: a
-            ? (a.first_name ? `${a.first_name} ${a.last_name}` : a.last_name)
-            : 'Athlete',
-          meetName: a?.heat.meet.name ?? '',
-          eventLabel: a
-            ? formatEventLabel(a.heat.event_num, a.heat.round, a.heat.heat_num, a.heat.event_name)
-            : '',
-          bundleTitle: BUNDLES[item.bundle].title,
-          priceLabel:  `$${(item.amount_cents / 100).toFixed(2)}`,
-        }
-      }))
-      await sendOrderEmail({
-        to:          email,
-        orderNumber: order.order_number,
-        token,
-        totalLabel:  `$${(order.amount_cents / 100).toFixed(2)}`,
-        items,
-      })
+      await sendOrderConfirmation(order, email)
       return NextResponse.json({ success: true })
     } catch (err) {
       console.error('Order email send failed:', err)

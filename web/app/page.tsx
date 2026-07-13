@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { getRecentMeets } from '@/lib/database'
+import { formatMeetDate } from '@/lib/format'
 import Button from './components/ui/Button'
 import SpeedLines from './components/ui/SpeedLines'
 import Watermark from './components/ui/Watermark'
@@ -24,12 +25,6 @@ const STEPS = [
     body: "Pick a format and overlay, copy the caption, and it's feed-ready.",
   },
 ]
-
-function formatMeetDate(dateStr: string) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
-  })
-}
 
 export default async function HomePage() {
   const recentMeets = await getRecentMeets(6).catch(() => [])
@@ -130,7 +125,7 @@ export default async function HomePage() {
                     {meet.name}
                   </p>
                   <p className="text-xs text-white/60 mt-2">
-                    {formatMeetDate(meet.date)}
+                    {formatMeetDate(meet.date, 'short')}
                     {meet.location ? ` · ${meet.location}` : ''}
                   </p>
                 </div>

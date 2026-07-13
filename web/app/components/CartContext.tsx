@@ -2,7 +2,9 @@
 
 /**
  * CartContext — cart state shared across the app (header badge, photo page,
- * cart page). Hydrates from localStorage after mount to avoid SSR mismatch.
+ * cart page). Hydrates from localStorage after mount to avoid SSR mismatch;
+ * consumers that need the persisted lines (e.g. Studio rehydration) must wait
+ * for `hydrated` — child effects run before this provider's own effect.
  */
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
@@ -12,10 +14,11 @@ import { loadCart, saveCart } from '@/lib/cart'
 interface CartApi {
   lines: CartLine[]
   count: number
+  /** True once the cart has been loaded from localStorage. */
+  hydrated: boolean
   /** Add a line, or replace the existing line for the same athlete. */
   upsertLine: (line: CartLine) => void
   removeLine: (lineId: string) => void
-  updateLine: (lineId: string, patch: Partial<Omit<CartLine, 'lineId'>>) => void
   clear: () => void
   /** Find an existing line for an athlete (used to rehydrate the editor). */
   lineForAthlete: (athleteId: string) => CartLine | undefined
@@ -25,47 +28,35 @@ const CartContext = createContext<CartApi | null>(null)
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([])
+  const [hydrated, setHydrated] = useState(false)
 
   // Hydrate from localStorage after mount (SSR renders an empty cart)
-  useEffect(() => { setLines(loadCart()) }, [])
-
-  const persist = useCallback((next: CartLine[]) => {
-    setLines(next)
-    saveCart(next)
+  useEffect(() => {
+    setLines(loadCart())
+    setHydrated(true)
   }, [])
 
+  // Single persistence point — every mutation below just sets state
+  useEffect(() => {
+    if (hydrated) saveCart(lines)
+  }, [lines, hydrated])
+
   const upsertLine = useCallback((line: CartLine) => {
-    setLines(prev => {
-      const next = [...prev.filter(l => l.athleteId !== line.athleteId), line]
-      saveCart(next)
-      return next
-    })
+    setLines(prev => [...prev.filter(l => l.athleteId !== line.athleteId), line])
   }, [])
 
   const removeLine = useCallback((lineId: string) => {
-    setLines(prev => {
-      const next = prev.filter(l => l.lineId !== lineId)
-      saveCart(next)
-      return next
-    })
+    setLines(prev => prev.filter(l => l.lineId !== lineId))
   }, [])
 
-  const updateLine = useCallback((lineId: string, patch: Partial<Omit<CartLine, 'lineId'>>) => {
-    setLines(prev => {
-      const next = prev.map(l => l.lineId === lineId ? { ...l, ...patch } : l)
-      saveCart(next)
-      return next
-    })
-  }, [])
-
-  const clear = useCallback(() => persist([]), [persist])
+  const clear = useCallback(() => setLines([]), [])
 
   const api: CartApi = {
     lines,
     count: lines.length,
+    hydrated,
     upsertLine,
     removeLine,
-    updateLine,
     clear,
     lineForAthlete: (athleteId) => lines.find(l => l.athleteId === athleteId),
   }

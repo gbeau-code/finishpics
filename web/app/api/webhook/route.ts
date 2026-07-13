@@ -49,31 +49,8 @@ export async function POST(request: NextRequest) {
           try {
             const order = await getOrderBySession(session.id)
             if (order?.order_number) {
-              const { BUNDLES } = await import('@/lib/bundles')
-              const { sendOrderEmail } = await import('@/lib/email')
-              const { formatEventLabel } = await import('@/lib/format')
-              const items = await Promise.all(order.items.map(async (item) => {
-                const a = await getAthleteWithContext(item.athlete_id)
-                const b = BUNDLES[item.bundle]
-                return {
-                  athleteName: a
-                    ? (a.first_name ? `${a.first_name} ${a.last_name}` : a.last_name)
-                    : 'Athlete',
-                  meetName: a?.heat.meet.name ?? '',
-                  eventLabel: a
-                    ? formatEventLabel(a.heat.event_num, a.heat.round, a.heat.heat_num, a.heat.event_name)
-                    : '',
-                  bundleTitle: b.title,
-                  priceLabel:  `$${(item.amount_cents / 100).toFixed(2)}`,
-                }
-              }))
-              await sendOrderEmail({
-                to:          email,
-                orderNumber: order.order_number,
-                token:       session.id,
-                totalLabel:  `$${(order.amount_cents / 100).toFixed(2)}`,
-                items,
-              })
+              const { sendOrderConfirmation } = await import('@/lib/email')
+              await sendOrderConfirmation(order, email)
             }
           } catch (err) {
             console.error('Order email failed for session', session.id, err)
