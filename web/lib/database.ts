@@ -368,6 +368,77 @@ export async function searchAthletes(query: string, meetId?: string | null, limi
   return rows.map(rowToAthleteWithContext)
 }
 
+/** Distinct published events/heats in a meet — powers the search filter chips. */
+export interface MeetEvent {
+  event_num:  string
+  round:      string
+  heat_num:   string
+  event_name: string | null
+  athlete_count: number
+}
+
+export async function getPublishedEventsForMeet(meetId: string): Promise<MeetEvent[]> {
+  const sql = getDb()
+  const rows = await sql`
+    SELECT h.event_num, h.round, h.heat_num, h.event_name,
+           COUNT(a.id)::int AS athlete_count
+    FROM heats h
+    LEFT JOIN athletes a ON a.heat_id = h.id
+    WHERE h.meet_id = ${meetId}
+      AND h.status  = 'published'
+    GROUP BY h.event_num, h.round, h.heat_num, h.event_name
+    ORDER BY
+      NULLIF(regexp_replace(h.event_num, '\D', '', 'g'), '')::int NULLS LAST,
+      h.event_num, h.round, h.heat_num
+  `
+  return rows as MeetEvent[]
+}
+
+/** All athletes in one published heat, ordered by place — browse-by-event. */
+export async function listAthletesByEvent(
+  meetId:   string,
+  eventNum: string,
+  round?:   string | null,
+  heatNum?: string | null,
+): Promise<AthleteWithContext[]> {
+  const sql = getDb()
+  const rows = await sql`
+    SELECT
+      a.*,
+      h.id            AS heat_id_,
+      h.meet_id       AS heat_meet_id,
+      h.event_num     AS heat_event_num,
+      h.round         AS heat_round,
+      h.heat_num      AS heat_heat_num,
+      h.event_name    AS heat_event_name,
+      h.image_path    AS heat_image_path,
+      h.image_width   AS heat_image_width,
+      h.image_height  AS heat_image_height,
+      h.first_frame_time AS heat_first_frame_time,
+      h.last_frame_time  AS heat_last_frame_time,
+      h.status        AS heat_status,
+      h.created_at    AS heat_created_at,
+      m.id            AS meet_id_,
+      m.name          AS meet_name,
+      m.date          AS meet_date,
+      m.location      AS meet_location,
+      m.company_name  AS meet_company_name,
+      m.created_at    AS meet_created_at
+    FROM athletes a
+    JOIN heats h ON h.id = a.heat_id
+    JOIN meets  m ON m.id = h.meet_id
+    WHERE
+      h.status = 'published'
+      AND m.id = ${meetId}
+      AND h.event_num = ${eventNum}
+      AND (${round ?? null}::text   IS NULL OR h.round    = ${round ?? null})
+      AND (${heatNum ?? null}::text IS NULL OR h.heat_num = ${heatNum ?? null})
+    ORDER BY a.place ASC NULLS LAST, a.finish_time ASC NULLS LAST
+    LIMIT 100
+  `
+  return rows.map(rowToAthleteWithContext)
+}
+
 // ---------------------------------------------------------------------------
 // Row mapping helpers
 // ---------------------------------------------------------------------------

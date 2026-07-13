@@ -1,15 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { searchAthletes } from '@/lib/database'
+import { searchAthletes, listAthletesByEvent } from '@/lib/database'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  const q      = request.nextUrl.searchParams.get('q')?.trim() ?? ''
-  const meetId = request.nextUrl.searchParams.get('meetId')?.trim() || null
-  if (!q) return NextResponse.json([])
+  const sp     = request.nextUrl.searchParams
+  const q      = sp.get('q')?.trim() ?? ''
+  const meetId = sp.get('meetId')?.trim() || null
+  const event  = sp.get('event')?.trim() || null
+  const round  = sp.get('round')?.trim() || null
+  const heat   = sp.get('heat')?.trim() || null
 
-  const results = await searchAthletes(q, meetId)
+  // Browse-by-event: no query needed when an event filter is set within a meet
+  let results
+  if (q) {
+    results = await searchAthletes(q, meetId)
+    if (event) results = results.filter(a => a.heat.event_num === event)
+    if (round) results = results.filter(a => a.heat.round === round)
+    if (heat)  results = results.filter(a => a.heat.heat_num === heat)
+  } else if (meetId && event) {
+    results = await listAthletesByEvent(meetId, event, round, heat)
+  } else {
+    return NextResponse.json([])
+  }
 
   return NextResponse.json(
     results.map((a) => ({

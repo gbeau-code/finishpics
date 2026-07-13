@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getMeet } from '@/lib/database'
+import Banner from '@/app/components/ui/Banner'
 import MeetSearch from './MeetSearch'
 
 export const dynamic = 'force-dynamic'
@@ -19,28 +20,23 @@ export default async function MeetPage({ params }: Props) {
   })
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {/* Back link */}
-      <div className="mb-8">
-        <Link href="/" className="text-sm text-blue-600 hover:text-blue-700 transition-colors">
+    <div>
+      <Banner
+        eyebrow="Find my finish"
+        title={meet.name}
+        meta={<>{meetDate}{meet.location ? <> · {meet.location}</> : null}</>}
+      >
+        <Link
+          href="/meets"
+          className="text-sm font-bold text-white/75 hover:text-white transition-colors duration-fp-fast"
+        >
           ← All meets
         </Link>
-      </div>
+      </Banner>
 
-      {/* Meet header */}
-      <div className="text-center mb-10">
-        <p className="text-sm font-semibold text-blue-600 uppercase tracking-widest mb-2">
-          Photo-Finish Images
-        </p>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-2 tracking-tight">
-          {meet.name}
-        </h1>
-        <p className="text-gray-500">
-          {meetDate}{meet.location ? ` · ${meet.location}` : ''}
-        </p>
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 lg:px-8 py-10 fp-page-in">
+        <MeetSearch meetId={meet.id} />
       </div>
-
-      <MeetSearch meetId={meet.id} />
     </div>
   )
 }

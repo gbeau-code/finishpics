@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 import { formatTime, formatEventLabel } from '@/lib/format'
 
 export interface SearchResult {
@@ -23,6 +24,30 @@ export interface SearchResult {
   }
 }
 
+/** Place badge — gold for the win, navy tint otherwise. */
+function PlaceBadge({ place }: { place: number | null }) {
+  const label = place != null ? String(place) : '–'
+  const isWin = place === 1
+  return (
+    <span
+      className={[
+        'tnum flex items-center justify-center w-9 h-9 rounded-[9px] shrink-0',
+        'fp-display text-base',
+        isWin
+          ? 'bg-fp-gold text-fp-ink-strong'
+          : 'bg-fp-blue-tint text-fp-navy',
+      ].join(' ')}
+      aria-label={place != null ? `Place ${place}` : 'Place unknown'}
+    >
+      {label}
+    </span>
+  )
+}
+
+/**
+ * Athlete result row (prototype "results list"): place badge, name + team,
+ * event · heat, tabular finish time, chevron. Rows stagger in via .fp-stagger.
+ */
 export function AthleteCard({
   athlete,
   index,
@@ -43,47 +68,35 @@ export function AthleteCard({
     : athlete.last_name
 
   return (
-    <div
-      className="animate-card bg-white border border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-md transition-all group"
-      style={{ animationDelay: `${index * 40}ms` }}
+    <Link
+      href={`/photo/${athlete.id}`}
+      className="fp-stagger group flex items-center gap-4 bg-white border border-fp-border rounded-fp-card px-4 py-3.5 shadow-fp-xs hover:border-fp-blue hover:shadow-fp-sm transition-all duration-fp-base"
+      style={{ animationDelay: `${Math.min(index * 120, 920)}ms` }}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <h3 className="text-lg font-bold text-gray-900 truncate">{displayName}</h3>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-2 flex-wrap">
-            {athlete.bib && athlete.bib !== '0' && (
-              <span className="font-medium text-gray-700">Bib #{athlete.bib}</span>
-            )}
-            {athlete.team && (
-              <>
-                {athlete.bib && athlete.bib !== '0' && <span className="text-gray-300">&bull;</span>}
-                <span>{athlete.team}</span>
-              </>
-            )}
-          </div>
-          {showMeet && (
-            <p className="text-sm text-gray-600 mb-1 font-medium">{athlete.meet.name}</p>
-          )}
-          <p className="text-sm text-gray-500">{eventLabel}</p>
-          {athlete.finish_time != null && (
-            <p className="text-sm text-gray-700 mt-1.5 font-mono font-medium">
-              {formatTime(athlete.finish_time)}
-            </p>
-          )}
-        </div>
+      <PlaceBadge place={athlete.place} />
 
-        <Link
-          href={`/photo/${athlete.id}`}
-          className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-colors mt-1"
-        >
-          View Photo
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </Link>
+      <div className="flex-1 min-w-0">
+        <p className="font-extrabold text-fp-ink-strong text-[15px] leading-tight truncate group-hover:text-fp-blue transition-colors duration-fp-fast">
+          {displayName}
+        </p>
+        <p className="text-xs text-fp-muted truncate mt-0.5">
+          {[
+            athlete.team,
+            athlete.bib && athlete.bib !== '0' ? `Bib ${athlete.bib}` : null,
+          ].filter(Boolean).join(' · ')}
+        </p>
+        <p className="text-xs text-fp-faint truncate mt-0.5">
+          {showMeet ? `${athlete.meet.name} · ${eventLabel}` : eventLabel}
+        </p>
       </div>
-    </div>
+
+      {athlete.finish_time != null && (
+        <p className="tnum fp-display text-lg text-fp-navy shrink-0">
+          {formatTime(athlete.finish_time)}
+        </p>
+      )}
+
+      <ChevronRight className="w-4 h-4 text-fp-faint group-hover:text-fp-blue shrink-0 transition-colors duration-fp-fast" />
+    </Link>
   )
 }

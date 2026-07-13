@@ -27,7 +27,7 @@ export default function Logo({
           <span className="text-fp-gold">Pics</span>
         </span>
         {tagline && (
-          <span className="block text-[8px] font-bold uppercase tracking-[0.22em] text-white/50 mt-1">
+          <span className="hidden sm:block text-[8px] font-bold uppercase tracking-[0.22em] text-white/50 mt-1 whitespace-nowrap">
             Official Photo-Finish Images
           </span>
         )}

@@ -46,7 +46,7 @@ export default function Button({
   children,
 }: Props) {
   const cls = [
-    'inline-flex items-center justify-center gap-2 font-extrabold italic select-none',
+    'inline-flex items-center justify-center gap-2 font-extrabold italic select-none whitespace-nowrap',
     'transition-all duration-fp-base ease-fp-out',
     'disabled:opacity-60 disabled:cursor-wait disabled:shadow-none',
     VARIANT[variant],

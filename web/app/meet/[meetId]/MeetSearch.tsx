@@ -1,21 +1,51 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Search, Loader2 } from 'lucide-react'
 import { AthleteCard, SearchResult } from '@/app/components/AthleteCard'
+import Chip from '@/app/components/ui/Chip'
+import { formatRound } from '@/lib/format'
+
+interface MeetEvent {
+  event_num:  string
+  round:      string
+  heat_num:   string
+  event_name: string | null
+  athlete_count: number
+}
 
 export default function MeetSearch({ meetId }: { meetId: string }) {
-  const [query, setQuery]     = useState('')
-  const [results, setResults] = useState<SearchResult[]>([])
-  const [loading, setLoading] = useState(false)
+  const [query, setQuery]       = useState('')
+  const [results, setResults]   = useState<SearchResult[]>([])
+  const [loading, setLoading]   = useState(false)
   const [searched, setSearched] = useState(false)
+  const [events, setEvents]     = useState<MeetEvent[]>([])
+  const [selEvent, setSelEvent] = useState<string | null>(null)   // event_num
+  const [selHeat, setSelHeat]   = useState<string | null>(null)   // `${round}|${heat_num}`
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const doSearch = useCallback(async (q: string) => {
-    if (!q.trim()) { setResults([]); setSearched(false); return }
+  // Load the event list for the filter chips
+  useEffect(() => {
+    fetch(`/api/meets/${meetId}/events`)
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setEvents(data) })
+      .catch(() => {})
+  }, [meetId])
+
+  const doSearch = useCallback(async (q: string, event: string | null, heatKey: string | null) => {
+    if (!q.trim() && !event) { setResults([]); setSearched(false); return }
     setLoading(true)
     setSearched(true)
     try {
-      const res  = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}&meetId=${meetId}`)
+      const params = new URLSearchParams({ meetId })
+      if (q.trim()) params.set('q', q.trim())
+      if (event)    params.set('event', event)
+      if (heatKey) {
+        const [round, heat] = heatKey.split('|')
+        params.set('round', round)
+        params.set('heat', heat)
+      }
+      const res  = await fetch(`/api/search?${params}`)
       const data = await res.json()
       setResults(Array.isArray(data) ? data : [])
     } catch {
@@ -29,57 +59,111 @@ export default function MeetSearch({ meetId }: { meetId: string }) {
     const val = e.target.value
     setQuery(val)
     if (debounceTimer.current) clearTimeout(debounceTimer.current)
-    debounceTimer.current = setTimeout(() => doSearch(val), 300)
+    debounceTimer.current = setTimeout(() => doSearch(val, selEvent, selHeat), 300)
   }
+
+  const pickEvent = (eventNum: string | null) => {
+    const next = eventNum === selEvent ? null : eventNum
+    setSelEvent(next)
+    setSelHeat(null)
+    doSearch(query, next, null)
+  }
+
+  const pickHeat = (heatKey: string | null) => {
+    const next = heatKey === selHeat ? null : heatKey
+    setSelHeat(next)
+    doSearch(query, selEvent, next)
+  }
+
+  // Distinct events for primary chips (an event may have several rounds/heats)
+  const distinctEvents = events.reduce<MeetEvent[]>((acc, e) => {
+    if (!acc.some(x => x.event_num === e.event_num)) acc.push(e)
+    return acc
+  }, [])
+  const heatsOfSelected = selEvent
+    ? events.filter(e => e.event_num === selEvent)
+    : []
 
   return (
     <>
       {/* Search bar */}
-      <div className="max-w-2xl mx-auto mb-10">
+      <div className="max-w-2xl mx-auto mb-6">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <Search className="w-5 h-5 text-fp-faint" strokeWidth={2.25} />
           </div>
           <input
             type="text"
             value={query}
             onChange={handleInput}
-            placeholder="Search by name or team..."
-            className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 transition-colors bg-white shadow-sm placeholder-gray-400"
+            placeholder="Search your name, team, or bib…"
+            className="w-full pl-12 pr-4 py-4 text-lg border-2 border-fp-border rounded-fp-card focus:outline-none focus:border-fp-blue transition-colors duration-fp-fast bg-white shadow-fp-xs placeholder-fp-faint"
             autoFocus
           />
           {loading && (
             <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-              <svg className="animate-spin h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
+              <Loader2 className="fp-spin h-5 w-5 text-fp-blue" />
             </div>
           )}
         </div>
       </div>
 
+      {/* Event filter chips */}
+      {distinctEvents.length > 0 && (
+        <div className="max-w-2xl mx-auto mb-2 flex gap-2 overflow-x-auto pb-2 [-webkit-overflow-scrolling:touch]">
+          <Chip selected={selEvent === null} onClick={() => pickEvent(null)}>
+            All events
+          </Chip>
+          {distinctEvents.map(e => (
+            <Chip
+              key={e.event_num}
+              selected={selEvent === e.event_num}
+              onClick={() => pickEvent(e.event_num)}
+            >
+              {e.event_name ?? `Event ${e.event_num}`}
+            </Chip>
+          ))}
+        </div>
+      )}
+
+      {/* Round/heat chips for the selected event */}
+      {heatsOfSelected.length > 1 && (
+        <div className="max-w-2xl mx-auto mb-2 flex gap-2 overflow-x-auto pb-2">
+          <Chip selected={selHeat === null} onClick={() => pickHeat(null)}>
+            All heats
+          </Chip>
+          {heatsOfSelected.map(e => {
+            const key = `${e.round}|${e.heat_num}`
+            return (
+              <Chip key={key} selected={selHeat === key} onClick={() => pickHeat(key)}>
+                {formatRound(e.round)} · Heat {e.heat_num}
+              </Chip>
+            )
+          })}
+        </div>
+      )}
+
       {/* Results */}
       {searched && (
-        <div className="animate-card">
+        <div className="max-w-2xl mx-auto mt-6">
           {results.length > 0 ? (
             <>
-              <p className="text-sm text-gray-500 mb-4">
-                {results.length} result{results.length !== 1 ? 's' : ''} for &ldquo;{query}&rdquo;
+              <p className="text-sm text-fp-muted mb-4">
+                {results.length} result{results.length !== 1 ? 's' : ''}
+                {query.trim() ? <> for &ldquo;{query}&rdquo;</> : null}
               </p>
-              <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+              <div className="space-y-3">
                 {results.map((athlete, i) => (
                   <AthleteCard key={athlete.id} athlete={athlete} index={i} showMeet={false} />
                 ))}
               </div>
             </>
-          ) : (
+          ) : !loading && (
             <div className="text-center py-16">
-              <div className="text-5xl mb-4">&#128247;</div>
-              <p className="text-xl font-semibold text-gray-700 mb-2">No results found</p>
-              <p className="text-gray-500">Try searching by first name, last name, or team name.</p>
+              <p className="fp-display text-2xl text-fp-ink-strong mb-2">No results found</p>
+              <p className="text-fp-muted">
+                Try your first name, last name, team, or bib number.
+              </p>
             </div>
           )}
         </div>
