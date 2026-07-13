@@ -107,25 +107,31 @@ the `social` bundle must NOT expose the clean photo download.
   800-italic display style — needs a font download (ask user); until then the
   browser synthesizes the slant and Sharp uses the existing Bold + skew.
 
-### P1 — Design system + shell
-- Shared primitives: sticky navy Header (logo, cart bag + gold badge, Find-my-finish
-  pill), Button (gold CTA / blue / ghost), Card, Chip/SegmentedControl, navy Banner
-  with speed-lines, SAMPLE watermark tile, scan-line + page-transition wrappers.
-- Honor `prefers-reduced-motion`; tabular-nums for times/prices; ≥44px hit targets.
+### P1 — Design system + shell ✅ (2026-07-12, commit 85e6a9c)
+- ui/ primitives: Logo, Button (gold/blue/ghost/outline), Chip, Banner + SpeedLines,
+  Watermark; sticky navy Header with live cart badge; CartProvider (localStorage).
+- Roboto Condensed Italic VF (browser) + static 800-italic TTF (for Sharp, P3).
+- Reduced-motion, .tnum, ≥44px targets in place.
 
-### P2 — Browse + search (reskin flow)
-- `/` home hero ("OWN YOUR FINISH LINE."), how-it-works 3-step, recent meets.
-- `/meets` index grid (thumbnail, name, date, venue).
-- `/meet/[meetId]` search: input + event/round/heat chips + staggered results list.
+### P2 — Browse + search ✅ (2026-07-12, commit f98136c)
+- `/` home hero, how-it-works, recent meets; `/meets` index grid (date, venue);
+  `/meet/[meetId]` banner + search with event/heat chips + staggered result rows.
+- API: `/api/meets/[meetId]/events`; `/api/search` browse-by-event support.
+- NOTE: local dev has no DATABASE_URL — pages verified with empty-data states;
+  full data flows get verified against seeded DB at cutover.
 
-### P3 — Social Studio (photo page) + server renderer
-- Extend `formatted-image.ts` → renderer producing `card` (existing), `post`
-  (1080×1080), `story` (1080×1920) for templates `whitegold` / `bar` / `bigtime`,
-  with tag (none/PB/SB) and focal crop — driven by `graphic-spec.ts`.
-- `lib/caption.ts`: auto caption + hashtags.
-- `FinishPreview` component: live preview via canvas using the **same spec** +
-  watermarked source; draggable focal; format/template/tag pickers; copy caption.
-- Bundle selector + "Add to cart" (writes line config to cart store).
+### P3 — Social Studio ✅ (2026-07-12, commits c815b7b + 48a129a)
+- `lib/social-image.ts`: Sharp renderer for post 1080²/story 1080×1920 ×
+  whitegold/bar/bigtime, focal crop, PB/SB tags, brand chips, SAMPLE watermark
+  option. Verified via `web/scripts/render-samples.ts` (outputs in
+  `data/social-samples/`). TEMPLATE_SPECS now holds exact prototype values.
+- `lib/caption.ts`; `FinishPreview.tsx` (CSS preview off the same spec, drag
+  focal, Instagram chrome); `Studio.tsx` (bundles, pickers, caption copy,
+  add-to-cart with rehydrate); photo page rebuilt with athlete banner; legacy
+  `?session_id=` links still render the v1 download section.
+- `/dev/studio` playground (sample data, no DB) for design iteration.
+- NOTE: Full bundle saves the chosen styling as one post + one story (the
+  2-graphic allotment); per-graphic independent styling can come later.
 
 ### P4 — Cart + combined checkout + fulfillment
 - Cart store (client, localStorage): lines `{lineId, athleteId, bundle, config}`;
