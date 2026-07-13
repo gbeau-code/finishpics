@@ -9,10 +9,10 @@
  * this file carries fonts, type treatments, and shared animations.
  * ------------------------------------------------------------------------- */
 
-/* Self-hosted Roboto Condensed — the SAME files embedded in lib/font-data.ts
+/* Self-hosted Roboto Condensed — the same family embedded in lib/font-data.ts
  * for Sharp rendering, so browser previews and server-rendered graphics match.
- * TODO(P1): add true Italic cuts (BoldItalic/BlackItalic) for the 800-italic
- * display style; until then font-synthesis provides the slant. */
+ * Italic is the Google Fonts variable font (wght 100–900); Sharp uses the
+ * static 800 instance (RobotoCondensed-ExtraBoldItalic.ttf, added in P3). */
 @font-face {
   font-family: 'Roboto Condensed';
   src: url('/fonts/RobotoCondensed-Regular.ttf') format('truetype');
@@ -25,6 +25,13 @@
   src: url('/fonts/RobotoCondensed-Bold.ttf') format('truetype');
   font-weight: 700 900;
   font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Roboto Condensed';
+  src: url('/fonts/RobotoCondensed-Italic-VF.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: italic;
   font-display: swap;
 }
 

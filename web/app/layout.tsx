@@ -1,9 +1,12 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { CartProvider } from './components/CartContext'
+import Header from './components/Header'
 
 export const metadata: Metadata = {
-  title: 'FinishPics — Your Photo-Finish Moment',
-  description: 'Find and download your photo-finish timing images from track meets.',
+  title: 'FinishPics — Own Your Finish Line',
+  description:
+    'Official photo-finish images from track & field meets. Find your race, style a share-ready graphic, and own your finish line.',
 }
 
 export default function RootLayout({
@@ -13,45 +16,37 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-white text-gray-900 antialiased min-h-screen flex flex-col">
-        {/* Navigation */}
-        <header className="border-b border-gray-100 bg-white sticky top-0 z-50">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center h-14">
-              <a href="/" className="flex items-center gap-2 group">
-                <span className="text-xl font-bold text-blue-600 tracking-tight group-hover:text-blue-700 transition-colors">
-                  FinishPics
-                </span>
-                <span className="hidden sm:inline-block text-xs text-gray-400 font-medium mt-0.5">
-                  Photo-Finish Images
-                </span>
-              </a>
+      <body className="bg-white text-fp-ink antialiased min-h-screen flex flex-col font-sans">
+        <CartProvider>
+          <Header />
+
+          <main className="flex-1">
+            {children}
+          </main>
+
+          {/* Footer */}
+          <footer className="bg-fp-navy text-white/60 mt-16">
+            <div className="max-w-[1180px] mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-sm">
+              <p className="fp-eyebrow text-[10px] text-fp-gold/80 mb-2">
+                Official Photo-Finish Images
+              </p>
+              <p>
+                &copy; {new Date().getFullYear()} FinishPics
+              </p>
+              <p className="mt-1">
+                Questions?{' '}
+                <a href="mailto:support@finishpics.com" className="text-white/85 hover:text-fp-gold transition-colors">
+                  support@finishpics.com
+                </a>
+              </p>
+              <p className="mt-1 space-x-3">
+                <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+                <span>&middot;</span>
+                <a href="/terms" className="hover:text-white transition-colors">Terms of Service</a>
+              </p>
             </div>
-          </div>
-        </header>
-
-        {/* Main content */}
-        <main className="flex-1">
-          {children}
-        </main>
-
-        {/* Footer */}
-        <footer className="border-t border-gray-100 py-6 text-center text-sm text-gray-400">
-          <p>
-            &copy; {new Date().getFullYear()} FinishPics &mdash; Track &amp; Field Photo-Finish Images
-          </p>
-          <p className="mt-1">
-            Questions?{' '}
-            <a href="mailto:support@finishpics.com" className="text-blue-500 hover:text-blue-600 transition-colors">
-              support@finishpics.com
-            </a>
-          </p>
-          <p className="mt-1 space-x-3">
-            <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
-            <span>&middot;</span>
-            <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>
-          </p>
-        </footer>
+          </footer>
+        </CartProvider>
       </body>
     </html>
   )
