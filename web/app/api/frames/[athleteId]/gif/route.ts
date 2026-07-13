@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { frameUrl, readImageBuffer, safeName } from '@/lib/blob-storage'
-import { getPurchaseBySession } from '@/lib/purchases'
+import { resolveAccess } from '@/lib/orders'
 import sharp from 'sharp'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const GIFEncoder = require('gif-encoder-2')
@@ -37,13 +37,10 @@ export async function GET(
     return NextResponse.json({ error: 'No frames available' }, { status: 404 })
   }
 
-  // Require a valid full-tier purchase
-  const token = request.nextUrl.searchParams.get('token')
-  if (!token) {
-    return NextResponse.json({ error: 'Purchase required', code: 'NO_PURCHASE' }, { status: 402 })
-  }
-  const purchase = await getPurchaseBySession(token, athleteId)
-  if (!purchase || purchase.tier !== 'full') {
+  // Boomerang GIF: legacy full tier, or v2 Full bundle
+  const token  = request.nextUrl.searchParams.get('token')
+  const access = await resolveAccess(token, athleteId)
+  if (!access.caps.frames) {
     return NextResponse.json({ error: 'Full package purchase required', code: 'UPGRADE_REQUIRED' }, { status: 402 })
   }
 

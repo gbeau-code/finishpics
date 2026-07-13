@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { frameUrl, readImageBuffer, safeName } from '@/lib/blob-storage'
-import { requirePurchase } from '@/lib/purchases'
+import { resolveAccess } from '@/lib/orders'
 import sharp from 'sharp'
 
 export const runtime = 'nodejs'
@@ -30,10 +30,10 @@ export async function GET(
     return NextResponse.json({ error: 'Frame index out of range' }, { status: 404 })
   }
 
-  // Raw frame download requires the full tier
-  const token    = request.nextUrl.searchParams.get('token')
-  const purchase = await requirePurchase(token, athleteId, 'full')
-  if (!purchase) {
+  // Raw frame download: legacy full tier, or v2 Full bundle
+  const token  = request.nextUrl.searchParams.get('token')
+  const access = await resolveAccess(token, athleteId)
+  if (!access.caps.frames) {
     return NextResponse.json(
       { error: 'Purchase required', code: 'UPGRADE_REQUIRED' },
       { status: 402 },

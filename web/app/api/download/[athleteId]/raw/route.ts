@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { readImageBuffer, imageExists, safeName } from '@/lib/blob-storage'
-import { requirePurchase } from '@/lib/purchases'
+import { resolveAccess } from '@/lib/orders'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,10 +20,11 @@ export async function GET(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  // Raw photo-finish download requires at minimum a basic purchase
-  const token    = request.nextUrl.searchParams.get('token')
-  const purchase = await requirePurchase(token, athleteId, 'basic')
-  if (!purchase) {
+  // Raw photo-finish download: any purchase/order that includes the photo
+  // (legacy tiers all do; v2 'social' bundle does NOT)
+  const token  = request.nextUrl.searchParams.get('token')
+  const access = await resolveAccess(token, athleteId)
+  if (!access.caps.rawPhoto) {
     return NextResponse.json(
       { error: 'Purchase required', code: 'NO_PURCHASE' },
       { status: 402 },

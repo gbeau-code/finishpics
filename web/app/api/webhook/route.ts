@@ -34,7 +34,23 @@ export async function POST(request: NextRequest) {
     const athleteId = session.metadata?.athleteId
     const email     = session.customer_details?.email ?? null
 
-    // 1. Confirm the purchase in the DB
+    // v2 combined order (cart checkout) — separate table, separate confirm
+    if (session.metadata?.fpKind === 'order') {
+      try {
+        const { confirmOrder } = await import('@/lib/orders')
+        await confirmOrder(
+          session.id,
+          typeof session.payment_intent === 'string' ? session.payment_intent : null,
+          email,
+        )
+      } catch (err) {
+        console.error('Failed to confirm order for session', session.id, err)
+        // 200 anyway — the confirmation page reconciles
+      }
+      return NextResponse.json({ received: true })
+    }
+
+    // 1. Confirm the purchase in the DB (legacy v1 per-athlete purchase)
     try {
       await confirmPurchase(
         session.id,

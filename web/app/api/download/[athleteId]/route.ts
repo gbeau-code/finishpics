@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { readImageBuffer, imageExists, safeName } from '@/lib/blob-storage'
 import { createFormattedImage } from '@/lib/formatted-image'
-import { requirePurchase } from '@/lib/purchases'
+import { resolveAccess } from '@/lib/orders'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,10 +21,10 @@ export async function GET(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  // Formatted image requires enhanced tier or above
-  const token    = request.nextUrl.searchParams.get('token')
-  const purchase = await requirePurchase(token, athleteId, 'enhanced')
-  if (!purchase) {
+  // Formatted image: legacy enhanced+ tiers, or v2 Photo/Full bundles
+  const token  = request.nextUrl.searchParams.get('token')
+  const access = await resolveAccess(token, athleteId)
+  if (!access.caps.formatted) {
     return NextResponse.json(
       { error: 'Purchase required', code: 'UPGRADE_REQUIRED' },
       { status: 402 },
