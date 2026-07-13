@@ -144,8 +144,10 @@ the `social` bundle must NOT expose the clean photo download.
   purchased graphic from the order item's saved config.
 - `/order/confirm?session_id=`: Stripe reconciliation, success hero, per-item
   capability-aware download cards, cart auto-clear.
-- Known gap (polish): a photo page visited with an ORDER token shows the Studio,
-  not downloads — the order page is the download hub (email + redirect go there).
+- ~~Known gap~~ CLOSED (commit 9f53e29): the photo page resolves tokens via
+  `resolveAccess` and renders a unified `Downloads` rail for BOTH legacy and
+  order tokens (incl. social graphic links + order-page link); email re-send
+  handles order tokens; `PurchaseSection` removed.
 
 ### P5 — Admin, integrity ✅ (2026-07-12, commit fd8c9e9)
 - Smart meet cleanup implemented (see FEATURES.md — unpurchased-only deletion,
