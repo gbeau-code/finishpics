@@ -157,6 +157,14 @@ the `social` bundle must NOT expose the clean photo download.
 - Remaining polish (post-review): native share on confirmation page, page
   transitions, film-strip frame picker in Studio, per-graphic styling for Full.
 
+### P6 — Partner platform (designed, build after cutover)
+Timers join, connect Stripe (Connect Express), and sales for their meets
+auto-split with FinishPics keeping a set percentage. Full design in
+`PARTNER_PLATFORM.md`: separate charges & transfers (multi-partner carts),
+`timers`/`transfers` tables + `meets.timer_id`, upload keys move to DB,
+transfer engine in the webhook, refund-with-reversal admin action. Replaces
+the hardcoded TRIANGLE_TIMING / ROYALTY_RATE / UPLOAD_API_KEYS mechanisms.
+
 ### Cutover (remaining)
 1. Push `v2` → Vercel preview deployment (same env vars / DB / Blob as prod).
 2. Run `POST /api/admin/init-db` once (adds orders/order_items/sequence —
