@@ -1,0 +1,40 @@
+/* ============================================================
+   FinishLynx — Radii, borders, shadows & motion
+   The brand reads technical and precise: modest radii, crisp
+   borders, restrained shadows. Signature motif = the angled
+   "speed" cut (a sheared parallelogram edge) seen on logo bars
+   and CTAs — exposed as --shear so it stays consistent.
+   ============================================================ */
+
+:root {
+  /* Radius */
+  --radius-xs: 3px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* Borders */
+  --border-width: 1px;          /* @kind spacing */
+  --border-width-strong: 2px;   /* @kind spacing */
+
+  /* Shadows — cool, low-spread, never warm */
+  --shadow-xs: 0 1px 2px rgba(21, 21, 21, 0.06);
+  --shadow-sm: 0 2px 6px rgba(21, 21, 21, 0.08);
+  --shadow-md: 0 8px 20px rgba(21, 21, 21, 0.10);
+  --shadow-lg: 0 18px 40px rgba(21, 21, 21, 0.14);
+  --shadow-brand: 0 14px 34px rgba(77, 11, 150, 0.28);
+  --shadow-focus: 0 0 0 3px rgba(148, 109, 192, 0.45);
+
+  /* Signature angled cut (speed shear) */
+  --shear: -12deg;                            /* @kind other */
+  --shear-clip: polygon(7% 0, 100% 0, 93% 100%, 0% 100%); /* @kind other */
+
+  /* Motion — quick, confident, no bounce */
+  --ease-out: cubic-bezier(0.16, 0.84, 0.44, 1);   /* @kind other */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);   /* @kind other */
+  --dur-fast: 120ms;   /* @kind other */
+  --dur-base: 200ms;   /* @kind other */
+  --dur-slow: 360ms;   /* @kind other */
+}

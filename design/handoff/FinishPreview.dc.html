@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  @keyframes ovFade { from { opacity: 0; } to { opacity: 1; } }
+  .ov-anim { animation: ovFade 0.36s cubic-bezier(0.16,0.84,0.44,1); }
+  @media (prefers-reduced-motion: reduce) { .ov-anim { animation-duration: 0.01ms; } }
+  .wm { position:absolute; inset:0; z-index:1; pointer-events:none; background-repeat:repeat; background-size:208px 58px; background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="208" height="58"><g font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="rgba(45,45,45,0.5)"><text x="6" y="20">SAMPLE · FinishPics.com</text><text x="-98" y="46">SAMPLE · FinishPics.com</text><text x="110" y="46">SAMPLE · FinishPics.com</text></g></svg>'); }
+</style>
+</helmet>
+<div style="{{ shellStyle }}">
+
+  <sc-if value="{{ isFeed }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; align-items:center; gap:10px; padding:11px 13px;">
+      <div style="width:32px; height:32px; border-radius:999px; background:linear-gradient(135deg,#0E63E6,#0A1B3D); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:12px;">{{ aInitials }}</div>
+      <div style="line-height:1.2;">
+        <div style="font-size:13px; font-weight:700; color:#151515;">{{ aHandle }}</div>
+        <div style="font-size:11px; color:#9aa1ab;">{{ meetName }}</div>
+      </div>
+      <i data-lucide="more-horizontal" style="width:18px; height:18px; color:#151515; margin-left:auto;"></i>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isStrava }}">
+    <div style="display:flex; align-items:center; gap:10px; padding:12px 14px;">
+      <div style="width:34px; height:34px; border-radius:999px; background:#FC5200; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px;">{{ aInitials }}</div>
+      <div style="line-height:1.25;">
+        <div style="font-size:14px; font-weight:700; color:#151515;">{{ aName }}</div>
+        <div style="font-size:11px; color:#9aa1ab;">Today at 4:12 PM &middot; Race</div>
+      </div>
+      <span style="margin-left:auto; font-size:12px; font-weight:800; letter-spacing:0.06em; color:#FC5200;">STRAVA</span>
+    </div>
+  </sc-if>
+
+  <div style="{{ frameStyle }}" ref="{{ imgRef }}" onPointerDown="{{ onDown }}">
+    <div style="{{ photoStyle }}"></div>
+    <sc-if value="{{ showWm }}"><div class="wm"></div></sc-if>
+    <sc-if value="{{ notStory }}">
+      <div style="position:absolute; top:11px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:4px; background:rgba(8,12,22,0.46); backdrop-filter:blur(4px); color:rgba(255,255,255,0.92); font-size:9px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; padding:4px 9px; border-radius:999px; pointer-events:none; z-index:5;">
+        <i data-lucide="move" style="width:10px; height:10px;"></i>Drag to reposition
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isStory }}">
+      <div style="position:absolute; top:0; left:0; right:0; padding:12px 12px 0; background:linear-gradient(180deg,rgba(0,0,0,0.35),transparent); pointer-events:none;">
+        <div style="display:flex; gap:4px;">
+          <div style="flex:1; height:3px; border-radius:3px; background:#fff;"></div>
+          <div style="flex:1; height:3px; border-radius:3px; background:rgba(255,255,255,0.4);"></div>
+          <div style="flex:1; height:3px; border-radius:3px; background:rgba(255,255,255,0.4);"></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+          <div style="width:26px; height:26px; border-radius:999px; background:linear-gradient(135deg,#0E63E6,#0A1B3D); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:10px;">{{ aInitials }}</div>
+          <span style="color:#fff; font-size:12px; font-weight:600; text-shadow:0 1px 3px rgba(0,0,0,0.4);">{{ aHandle }}</span>
+          <span style="color:rgba(255,255,255,0.8); font-size:11px;">&middot; 2h</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- OVERLAY: White & Gold -->
+    <sc-if value="{{ tplWhitegold }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute; inset:0; background:linear-gradient(180deg, rgba(6,10,18,0.40) 0%, rgba(6,10,18,0) 24%, rgba(6,10,18,0) 38%, rgba(6,10,18,0.55) 64%, rgba(6,10,18,0.90) 100%);"></div>
+      <div style="position:absolute; top:16px; left:16px; display:flex; align-items:center; gap:7px;">
+        <span style="width:16px; height:16px; border-radius:5px; background:#FDB927; display:flex; align-items:center; justify-content:center;"><i data-lucide="flag" style="width:10px; height:10px; color:#151515;"></i></span>
+        <span style="color:#fff; font-size:11px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; text-shadow:0 1px 6px rgba(0,0,0,0.7);">FinishPics</span>
+      </div>
+      <div class="ov-anim" style="position:absolute; left:0; right:0; bottom:0; padding:34px 20px 24px; text-align:center; transform:scale({{ ovScale }}); transform-origin:bottom center;">
+        <sc-if value="{{ hasTag }}">
+        <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:11px;">
+          <span style="height:2px; width:22px; background:#FDB927;"></span>
+          <span style="color:#FDB927; font-size:12px; font-weight:800; letter-spacing:0.22em; text-transform:uppercase; text-shadow:0 1px 8px rgba(0,0,0,0.85);">{{ tagLabel }}</span>
+          <span style="height:2px; width:22px; background:#FDB927;"></span>
+        </div>
+        </sc-if>
+        <div class="tnum" style="color:#fff; font-style:italic; font-size:64px; font-weight:800; line-height:0.84; letter-spacing:-0.02em; text-shadow:0 4px 22px rgba(0,0,0,0.8);">{{ aTime }}</div>
+        <div style="color:#fff; font-size:12px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; margin-top:13px; text-shadow:0 1px 8px rgba(0,0,0,0.7);">{{ aName }} &middot; {{ aEvent }}</div>
+        <div style="color:#FDB927; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; margin-top:5px; text-shadow:0 1px 8px rgba(0,0,0,0.85);">{{ meetName }}</div>
+      </div>
+    </sc-if>
+
+    <!-- OVERLAY: Result Bar -->
+    <sc-if value="{{ tplBar }}">
+      <div class="ov-anim" style="position:absolute; left:0; right:0; bottom:0; padding:30px 18px 16px; background:linear-gradient(180deg,rgba(10,27,61,0) 0%,rgba(10,27,61,0.88) 78%);">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:18px; height:18px; border-radius:5px; background:#FDB927; display:flex; align-items:center; justify-content:center;"><i data-lucide="flag" style="width:11px; height:11px; color:#151515;"></i></span>
+          <span style="color:#fff; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase;">{{ aEvent }}</span>
+        </div>
+        <div style="display:flex; align-items:baseline; gap:9px; margin-top:7px;">
+          <span class="tnum" style="color:#fff; font-size:40px; font-weight:800; letter-spacing:-0.02em; line-height:1;">{{ aTime }}</span>
+          <sc-if value="{{ hasTag }}"><span style="color:#FDB927; font-size:13px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;">{{ tagLabel }}</span></sc-if>
+        </div>
+      </div>
+      <div style="position:absolute; top:14px; right:14px; display:flex; align-items:center; gap:5px; opacity:0.92;">
+        <span style="width:14px; height:14px; border-radius:4px; background:#0E63E6; display:flex; align-items:center; justify-content:center;"><i data-lucide="flag" style="width:9px; height:9px; color:#fff;"></i></span>
+        <span style="color:#fff; font-size:11px; font-weight:700; text-shadow:0 1px 3px rgba(0,0,0,0.5);">FinishPics</span>
+      </div>
+    </sc-if>
+
+    <!-- OVERLAY: Big Time -->
+    <sc-if value="{{ tplBigtime }}">
+      <div style="position:absolute; inset:0; background:linear-gradient(180deg,rgba(10,27,61,0.05) 30%,rgba(10,27,61,0.82) 100%);"></div>
+      <div class="ov-anim" style="position:absolute; left:0; right:0; bottom:26px; text-align:center; padding:0 16px; transform:scale({{ ovScale }}); transform-origin:bottom center;">
+        <sc-if value="{{ hasTag }}"><span style="display:inline-block; background:#FDB927; color:#151515; font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; padding:4px 10px; border-radius:999px;">{{ tagLabel }}</span></sc-if>
+        <div class="tnum" style="color:#fff; font-size:72px; font-weight:800; letter-spacing:-0.03em; line-height:0.9; margin-top:8px; text-shadow:0 6px 24px rgba(0,0,0,0.4);">{{ aTime }}</div>
+        <div style="color:rgba(255,255,255,0.92); font-size:12px; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; margin-top:8px;">{{ aName }} &middot; {{ aEvent }}</div>
+      </div>
+    </sc-if>
+
+    <!-- OVERLAY: Minimal -->
+    <sc-if value="{{ tplMinimal }}">
+      <div class="ov-anim" style="position:absolute; top:14px; left:14px; display:flex; align-items:center; gap:7px; background:rgba(10,27,61,0.5); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.25); padding:7px 12px; border-radius:999px;">
+        <span style="width:14px; height:14px; border-radius:4px; background:#FDB927; display:flex; align-items:center; justify-content:center;"><i data-lucide="flag" style="width:9px; height:9px; color:#151515;"></i></span>
+        <span class="tnum" style="color:#fff; font-size:13px; font-weight:700;">{{ aTime }}</span>
+      </div>
+      <div style="position:absolute; bottom:14px; right:14px; display:flex; align-items:center; gap:5px; opacity:0.9;">
+        <span style="color:rgba(255,255,255,0.95); font-size:11px; font-weight:700; text-shadow:0 1px 3px rgba(0,0,0,0.6);">FinishPics</span>
+      </div>
+    </sc-if>
+
+    <!-- OVERLAY: Strava stats -->
+    <sc-if value="{{ tplStrava }}">
+      <div class="ov-anim" style="position:absolute; left:0; right:0; bottom:0; padding:24px 16px 14px; background:linear-gradient(180deg,rgba(10,27,61,0) 0%,rgba(10,27,61,0.9) 80%);">
+        <div style="display:flex; gap:18px; border-top:2px solid #FC5200; padding-top:11px;">
+          <div><div style="color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:0.08em; text-transform:uppercase;">Event</div><div class="tnum" style="color:#fff; font-size:17px; font-weight:700; margin-top:2px;">{{ aEventShort }}</div></div>
+          <div><div style="color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:0.08em; text-transform:uppercase;">Time</div><div class="tnum" style="color:#fff; font-size:17px; font-weight:700; margin-top:2px;">{{ aTime }}</div></div>
+          <div><div style="color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:0.08em; text-transform:uppercase;">Heat</div><div class="tnum" style="color:#fff; font-size:17px; font-weight:700; margin-top:2px;">{{ aHeat }}</div></div>
+          <span style="margin-left:auto; align-self:flex-end; color:rgba(255,255,255,0.7); font-size:10px;">via FinishPics</span>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ isFeed }}">
+    <div style="padding:11px 13px 13px;">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <i data-lucide="heart" style="width:23px; height:23px; color:#151515;"></i>
+        <i data-lucide="message-circle" style="width:23px; height:23px; color:#151515;"></i>
+        <i data-lucide="send" style="width:23px; height:23px; color:#151515;"></i>
+        <i data-lucide="bookmark" style="width:23px; height:23px; color:#151515; margin-left:auto;"></i>
+      </div>
+      <div style="font-size:13px; font-weight:700; color:#151515; margin-top:9px;">1,248 likes</div>
+      <div style="font-size:13px; color:#2c2c2c; margin-top:3px; line-height:1.4;"><span style="font-weight:700;">{{ aHandle }}</span> {{ captionText }}</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isStrava }}">
+    <div style="padding:12px 14px 14px;">
+      <div style="display:flex; align-items:center; gap:8px; border-top:1px solid #EEF1F5; padding-top:11px;">
+        <i data-lucide="thumbs-up" style="width:18px; height:18px; color:#FC5200;"></i>
+        <span style="font-size:13px; color:#5b5b5b;">You and <span style="font-weight:700; color:#151515;">84 others</span></span>
+        <i data-lucide="message-square" style="width:18px; height:18px; color:#9aa1ab; margin-left:auto;"></i>
+        <span style="font-size:13px; color:#9aa1ab;">12</span>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:400,&quot;height&quot;:560},&quot;a&quot;:{&quot;editor&quot;:null},&quot;meet&quot;:{&quot;editor&quot;:null},&quot;format&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;feed&quot;,&quot;story&quot;,&quot;strava&quot;],&quot;default&quot;:&quot;feed&quot;},&quot;tpl&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;whitegold&quot;,&quot;bar&quot;,&quot;bigtime&quot;,&quot;minimal&quot;,&quot;strava&quot;],&quot;default&quot;:&quot;whitegold&quot;},&quot;compact&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false},&quot;watermark&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false}}">
+class Component extends DCLogic {
+  componentDidMount() { this._icons(); }
+  componentDidUpdate() { this._icons(); }
+  _icons() { try { window.lucide && window.lucide.createIcons(); } catch (e) {} }
+  _initials(n) { return (n || '').split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase(); }
+  _handle(n) { return (n || '').toLowerCase().replace(/[^a-z ]/g, '').trim().replace(/\s+/g, '.'); }
+
+  _imgRef = (el) => { this._imgEl = el; };
+  _onDown = (e) => {
+    this._drag = true;
+    this._sx = e.clientX; this._sy = e.clientY;
+    this._px = this.props.posX != null ? this.props.posX : 50;
+    this._py = this.props.posY != null ? this.props.posY : 42;
+    window.addEventListener('pointermove', this._onMove);
+    window.addEventListener('pointerup', this._onUp);
+    if (e.preventDefault) e.preventDefault();
+  };
+  _onMove = (e) => {
+    if (!this._drag || !this._imgEl) return;
+    const r = this._imgEl.getBoundingClientRect();
+    const dx = (e.clientX - this._sx) / r.width * 100;
+    const dy = (e.clientY - this._sy) / r.height * 100;
+    const nx = Math.max(0, Math.min(100, this._px - dx));
+    const ny = Math.max(0, Math.min(100, this._py - dy));
+    this.props.onPos && this.props.onPos(nx, ny);
+  };
+  _onUp = () => {
+    this._drag = false;
+    window.removeEventListener('pointermove', this._onMove);
+    window.removeEventListener('pointerup', this._onUp);
+  };
+  componentWillUnmount() { this._onUp(); }
+
+  renderVals() {
+    const a = this.props.a || { name: 'Colby Flynn', team: 'Hendricken', event: 'Boys 3000 Meter Run', eventShort: '3000m', time: '8:45.06', place: '1st', placeNum: '1', badge: 'Personal best', img: 'assets/pf-hendricken.jpg' };
+    const meet = this.props.meet || { name: 'Rhode Island State Championships' };
+    const f = this.props.format || 'feed';
+    const t = this.props.tpl || 'whitegold';
+    const compact = !!this.props.compact;
+    const px = this.props.posX != null ? this.props.posX : 50;
+    const py = this.props.posY != null ? this.props.posY : 42;
+
+    const dims = compact
+      ? { feed: { w: 300, h: 300 }, story: { w: 256, h: 455 }, strava: { w: 320, h: 180 } }[f]
+      : { feed: { w: 360, h: 360 }, story: { w: 300, h: 533 }, strava: { w: 462, h: 260 } }[f];
+    // Centered overlays are designed for square/portrait; scale them down on the short 16:9 strava crop.
+    const ovScale = (f === 'strava') ? (compact ? 0.5 : 0.66) : 1;
+
+    const shellStyle = f === 'story'
+      ? { width: dims.w + 'px', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 18px 40px rgba(21,21,21,0.14)' }
+      : { width: dims.w + 'px', background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 18px 40px rgba(21,21,21,0.14)', border: '1px solid #E4E8EF' };
+    const frameStyle = {
+      width: dims.w + 'px', height: dims.h + 'px', position: 'relative', overflow: 'hidden',
+      background: '#0A1B3D', borderRadius: f === 'story' ? '20px' : '0px', flexShrink: 0,
+      cursor: 'grab', touchAction: 'none',
+      transition: 'width 360ms cubic-bezier(0.16,0.84,0.44,1), height 360ms cubic-bezier(0.16,0.84,0.44,1)',
+    };
+
+    const hasTag = !!this.props.hasTag;
+    const tagLabel = this.props.tagLabel || '';
+    const captionText = this.props.caption || ('Crossed the line in ' + a.time + ' \u2014 ' + a.event + ', ' + meet.name + '.');
+
+    return {
+      isFeed: f === 'feed', isStory: f === 'story', isStrava: f === 'strava', notStory: f !== 'story',
+      objPos: px + '% ' + py + '%', onDown: this._onDown, imgRef: this._imgRef, aHeat: a.heat,
+      photoStyle: { position: 'absolute', inset: 0, backgroundImage: 'url("' + a.img + '")', backgroundSize: 'cover', backgroundPosition: px + '% ' + py + '%', userSelect: 'none', pointerEvents: 'none' },
+      tplWhitegold: t === 'whitegold', tplBar: t === 'bar', tplBigtime: t === 'bigtime', tplMinimal: t === 'minimal', tplStrava: t === 'strava',
+      shellStyle, frameStyle, ovScale,
+      aImg: a.img, aName: a.name, aTeam: a.team, aEvent: a.event, aEventShort: a.eventShort,
+      aTime: a.time, aPlace: a.place, aPlaceNum: a.placeNum, aBadge: a.badge,
+      aPlaceLabel: a.place + ' place',
+      aInitials: this._initials(a.name), aHandle: this._handle(a.name),
+      meetName: meet.name, captionText, hasTag, tagLabel,
+      showWm: !!this.props.watermark,
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -89,6 +89,49 @@ export async function POST(request: NextRequest) {
       ON purchases (athlete_id)
   `
 
+  // -------------------------------------------------------------------------
+  // v2: combined orders (multi-item cart). ADDITIVE — the legacy `purchases`
+  // table above is untouched so pre-v2 download links keep working forever.
+  // -------------------------------------------------------------------------
+  await sql`
+    CREATE TABLE IF NOT EXISTS orders (
+      id                        TEXT PRIMARY KEY,
+      order_number              TEXT UNIQUE,
+      stripe_session_id         TEXT UNIQUE NOT NULL,
+      stripe_payment_intent_id  TEXT,
+      email                     TEXT,
+      amount_cents              INTEGER NOT NULL,
+      status                    TEXT NOT NULL DEFAULT 'pending'
+                                  CHECK (status IN ('pending', 'paid')),
+      created_at                TEXT NOT NULL
+    )
+  `
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS order_items (
+      id           TEXT PRIMARY KEY,
+      order_id     TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      athlete_id   TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+      bundle       TEXT NOT NULL
+                     CHECK (bundle IN ('raw', 'photosocial', 'works', 'social')),
+      config       JSONB,
+      amount_cents INTEGER NOT NULL,
+      created_at   TEXT NOT NULL
+    )
+  `
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS order_items_order_id_idx ON order_items (order_id)
+  `
+  await sql`
+    CREATE INDEX IF NOT EXISTS order_items_athlete_id_idx ON order_items (athlete_id)
+  `
+
+  // Human-facing order numbers: FP-1001, FP-1002, …
+  await sql`
+    CREATE SEQUENCE IF NOT EXISTS fp_order_number_seq START 1001
+  `
+
   // Unique indexes for race-condition-safe upserts.
   // De-duplicate before adding — keep the oldest row in each duplicate group
   // and remap any children to it, then drop the extras.

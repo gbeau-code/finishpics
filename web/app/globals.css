@@ -2,22 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------------------------------------------------------------
+ * FinishPics v2 — global styles
+ * Tokens: design/handoff/README.md (navy + gold + electric-blue palette).
+ * Tailwind carries the palette/shadows/radii (see tailwind.config.ts);
+ * this file carries fonts, type treatments, and shared animations.
+ * ------------------------------------------------------------------------- */
+
+/* Self-hosted Roboto Condensed — the SAME files embedded in lib/font-data.ts
+ * for Sharp rendering, so browser previews and server-rendered graphics match.
+ * TODO(P1): add true Italic cuts (BoldItalic/BlackItalic) for the 800-italic
+ * display style; until then font-synthesis provides the slant. */
+@font-face {
+  font-family: 'Roboto Condensed';
+  src: url('/fonts/RobotoCondensed-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Roboto Condensed';
+  src: url('/fonts/RobotoCondensed-Bold.ttf') format('truetype');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --fp-navy: #0A1B3D;
+  --fp-gold: #FDB927;
+  --fp-blue: #0E63E6;
+  --fp-ease-out: cubic-bezier(0.16, 0.84, 0.44, 1);
+  --fp-ease-in:  cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Display type: 800 italic uppercase, tight tracking (hero/section headings) */
+.fp-display {
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+
+/* Eyebrows / labels: 800 italic uppercase, wide tracking */
+.fp-eyebrow {
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+/* Tabular figures — ALWAYS use for finish times, places, prices */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+ * Animations
+ * ------------------------------------------------------------------------- */
+
+/* Page-in transition (screen swap) */
+@keyframes fpPageIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fp-page-in {
+  animation: fpPageIn 360ms var(--fp-ease-in) both;
+}
+
+/* Results stagger — apply with inline animation-delay (120ms increments) */
+@keyframes fpFadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fp-stagger {
+  animation: fpFadeUp 320ms var(--fp-ease-out) both;
+}
+
+/* Scan line — gold vertical sweep across a photo (photo-finish motif) */
+@keyframes fpScan {
+  from { left: -2%; opacity: 0.9; }
+  to   { left: 102%; opacity: 0; }
+}
+.fp-scanline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--fp-gold);
+  box-shadow: 0 0 12px rgba(253, 185, 39, 0.8);
+  animation: fpScan 1.1s var(--fp-ease-out) 0.2s both;
+  pointer-events: none;
+}
+
+/* Checkout "placing order" spinner */
+@keyframes fpSpin { to { transform: rotate(360deg); } }
+.fp-spin { animation: fpSpin 0.7s linear infinite; }
+
+/* Legacy (v1) helpers still referenced by existing components */
 @keyframes fadeSlideUp {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
-.animate-card {
-  animation: fadeSlideUp 0.2s ease both;
-}
+.animate-card { animation: fadeSlideUp 0.2s ease both; }
 
 @keyframes shimmer {
   0%   { background-position: -600px 0; }
   100% { background-position:  600px 0; }
 }
-
 .skeleton {
   background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
   background-size: 600px 100%;
   animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Reduced motion: collapse all decorative motion */
+@media (prefers-reduced-motion: reduce) {
+  .fp-page-in,
+  .fp-stagger,
+  .fp-scanline,
+  .animate-card {
+    animation-duration: 0.01ms;
+    animation-delay: 0ms;
+  }
+  .fp-scanline { display: none; }
 }

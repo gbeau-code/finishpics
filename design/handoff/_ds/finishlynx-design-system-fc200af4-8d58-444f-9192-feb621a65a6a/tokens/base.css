@@ -1,0 +1,70 @@
+/* ============================================================
+   FinishLynx — base element defaults & a few brand utilities.
+   Lightweight: sets the typographic baseline so specimen cards
+   and kits inherit the brand without per-file resets.
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  color: var(--text-body);
+  background: var(--surface-page);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-display);
+  color: var(--text-strong);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-tight);
+  margin: 0 0 0.4em;
+  text-wrap: balance;
+}
+
+h1 { font-size: var(--fs-4xl); font-weight: var(--fw-black); letter-spacing: var(--ls-tighter); }
+h2 { font-size: var(--fs-3xl); }
+h3 { font-size: var(--fs-2xl); }
+h4 { font-size: var(--fs-xl); }
+
+p { margin: 0 0 1em; text-wrap: pretty; }
+
+a { color: var(--text-link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---- Utilities ---- */
+.lx-eyebrow {
+  font-size: var(--text-eyebrow-size);
+  font-weight: var(--text-eyebrow-weight);
+  letter-spacing: var(--text-eyebrow-spacing);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.lx-container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* Signature angled "speed" bar used behind the logo lockup / CTAs */
+.lx-shear {
+  clip-path: var(--shear-clip);
+}
+
+.lx-display {
+  font-family: var(--font-display);
+  font-weight: var(--fw-black);
+  letter-spacing: var(--ls-tight);
+  line-height: var(--lh-tight);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
