@@ -70,6 +70,9 @@ export function AthleteCard({
   return (
     <Link
       href={`/photo/${athlete.id}`}
+      // Search returns up to 20 dynamic links at once — viewport prefetch
+      // would execute the full photo page (DB queries) for every result
+      prefetch={false}
       className="fp-stagger group flex items-center gap-4 bg-white border border-fp-border rounded-fp-card px-4 py-3.5 shadow-fp-xs hover:border-fp-blue hover:shadow-fp-sm transition-all duration-fp-base"
       style={{ animationDelay: `${Math.min(index * 120, 920)}ms` }}
     >

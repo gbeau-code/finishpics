@@ -36,6 +36,8 @@ export default async function MeetsPage() {
               <Link
                 key={meet.id}
                 href={`/meet/${meet.id}`}
+                // Up to 100 meet cards — don't prefetch 100 dynamic pages
+                prefetch={false}
                 className="fp-stagger group rounded-fp-card overflow-hidden border border-fp-border bg-white shadow-fp-xs hover:shadow-fp-md transition-shadow duration-fp-base"
                 style={{ animationDelay: `${Math.min(i * 60, 600)}ms` }}
               >
