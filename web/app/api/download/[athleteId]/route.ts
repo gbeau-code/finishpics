@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { readImageBuffer, imageExists, safeName } from '@/lib/blob-storage'
-import { createFormattedImage } from '@/lib/formatted-image'
+import { renderFinishCard } from '@/lib/social-image'
+import { formatTime } from '@/lib/format'
 import { resolveAccess } from '@/lib/orders'
 
 export const runtime = 'nodejs'
@@ -37,21 +38,16 @@ export async function GET(
 
   const rawBuffer = await readImageBuffer(athlete.image_path!)
   const { heat }  = athlete
-  const formatted = await createFormattedImage(rawBuffer, {
-    firstName:    athlete.first_name,
-    lastName:     athlete.last_name,
-    bib:          athlete.bib,
-    team:         athlete.team,
-    place:        athlete.place,
-    finishTime:   athlete.finish_time,
-    eventName:    heat.event_name,
-    eventNum:     heat.event_num,
-    round:        heat.round,
-    heatNum:      heat.heat_num,
-    meetName:     heat.meet.name,
-    meetDate:     heat.meet.date,
-    meetLocation: heat.meet.location,
-    companyName:  heat.meet.company_name,
+  // v2 formatted deliverable = the finish card (matches the on-page hero &
+  // Studio preview). Replaces the v1 navy info-strip.
+  const formatted = await renderFinishCard(rawBuffer, {
+    name: athlete.first_name ? `${athlete.first_name} ${athlete.last_name}` : athlete.last_name,
+    team:        athlete.team,
+    eventLabel:  heat.event_name ?? `Event ${heat.event_num}`,
+    timeLabel:   athlete.finish_time != null ? formatTime(athlete.finish_time) : null,
+    meetName:    heat.meet.name,
+    venue:       heat.meet.location,
+    companyName: heat.meet.company_name,
   })
 
   const filename = `FinishPics-${safeName(athlete.last_name)}-${safeName(athlete.bib ?? 'nobib')}-formatted.jpg`

@@ -32,6 +32,10 @@ export interface SocialRenderInfo {
   /** Formatted finish time, e.g. "8:45.06" (null → overlays hide the time). */
   timeLabel:  string | null
   meetName:   string
+  /** Venue / meet location for the card footer line. */
+  venue?:     string | null
+  /** Timing company for the "Captured by …" credit on the card. */
+  companyName?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -382,4 +386,96 @@ export async function renderSocialGraphic(
   }
 
   return sharp(photo).composite(layers).jpeg({ quality: 92 }).toBuffer()
+}
+
+// ---------------------------------------------------------------------------
+// Formatted finish card — the "Your finish image" hero + the Photo/Full
+// bundles' formatted deliverable. The full-width photo with a bottom gradient
+// band: name + team (left), gold time + "Captured by" credit (right), a
+// divider, and an event · meet · venue footer. (New-style replacement for the
+// v1 navy info-strip in formatted-image.ts.)
+// ---------------------------------------------------------------------------
+
+const CARD_W = 1600
+
+/** Render `text`; if wider than maxW, re-render scaled down to fit. */
+async function fitText(text: string, spec: TextSpec, maxW: number): Promise<RenderedText> {
+  const first = await textLayer(text, spec, 1)
+  if (first.width <= maxW || first.width === 0) return first
+  return textLayer(text, { ...spec, size: spec.size * (maxW / first.width) }, 1)
+}
+
+export async function renderFinishCard(
+  source: Buffer,
+  info:   SocialRenderInfo,
+  opts:   { watermark?: boolean } = {},
+): Promise<Buffer> {
+  const base = sharp(source).resize({ width: CARD_W, withoutEnlargement: true })
+  const photo = await base.jpeg({ quality: 92 }).toBuffer()
+  const meta = await sharp(photo).metadata()
+  const W = meta.width!, H = meta.height!
+  const padX = W * 0.05
+  const padB = W * 0.045
+  const white85 = 'rgba(255,255,255,0.85)'
+
+  const nameSpec:   TextSpec = { size: W * 0.044,  weight: 800, italic: true, uppercase: true, color: COLORS.white, shadow: 'x' }
+  const teamSpec:   TextSpec = { size: W * 0.019,  weight: 600, color: white85 }
+  const timeSpec:   TextSpec = { size: W * 0.075,  weight: 800, italic: true, color: COLORS.gold, shadow: 'x' }
+  const creditSpec: TextSpec = { size: W * 0.015,  weight: 700, uppercase: true, tracking: 0.06, color: 'rgba(255,255,255,0.8)' }
+  const footSpec:   TextSpec = { size: W * 0.0165, weight: 600, uppercase: true, tracking: 0.04, color: 'rgba(255,255,255,0.72)' }
+
+  const timer  = (info.companyName ?? 'In Stride Timing')
+  const footer = [info.eventLabel, info.meetName, info.venue].filter(Boolean).join('   ·   ')
+
+  // Render pieces (name + footer shrink to fit their columns)
+  const time   = info.timeLabel ? await textLayer(info.timeLabel, timeSpec, 1) : null
+  const credit = await textLayer(`Captured by ${timer}`, creditSpec, 1)
+  const timeColW = Math.max(time?.width ?? 0, credit.width)
+  const name = await fitText(info.name, nameSpec, W - padX * 2 - timeColW - W * 0.045)
+  const team = info.team && info.team !== info.name ? await textLayer(info.team, teamSpec, 1) : null
+  const foot = await fitText(footer, footSpec, W - padX * 2)
+
+  const layers: Layer[] = []
+  const gap = W * 0.02
+
+  // bottom-up: footer, divider, then the name/team ↔ time/credit row
+  const footTop = H - padB - foot.height
+  const divY    = Math.round(footTop - gap)
+  const divH    = Math.max(1, Math.round(W * 0.0011))
+
+  const creditTop = divY - gap - credit.height
+  const timeTop   = time ? creditTop - W * 0.004 - time.height : creditTop
+  const teamTop   = divY - gap - (team?.height ?? 0)
+  const nameTop   = teamTop - W * 0.006 - name.height
+  const bandTop   = Math.round(Math.min(nameTop, timeTop) - padX * 0.6)
+
+  // gradient band
+  layers.push({
+    input: scrimSvg(
+      'linear-gradient(180deg, rgba(8,16,34,0) 0%, rgba(8,16,34,0.9) 24%, rgba(8,16,34,0.98) 100%)',
+      W, H - bandTop,
+    ),
+    left: 0, top: bandTop,
+  })
+
+  const place = async (t: RenderedText, spec: TextSpec, text: string, left: number, top: number) => {
+    if (spec.shadow) layers.push({ input: await shadowLayer(text, spec, 1), left: Math.round(left), top: Math.round(top + W * 0.0016) })
+    layers.push({ input: t.data, left: Math.round(left), top: Math.round(top) })
+  }
+
+  // right column: time + credit (right-aligned)
+  if (time) await place(time, timeSpec, info.timeLabel!, W - padX - time.width, timeTop)
+  await place(credit, creditSpec, `Captured by ${timer}`, W - padX - credit.width, creditTop)
+  // left column: name + team
+  await place(name, nameSpec, info.name, padX, nameTop)
+  if (team) await place(team, teamSpec, info.team!, padX, teamTop)
+  // divider + footer
+  layers.push({ input: rectSvg(W - padX * 2, divH, 'rgba(255,255,255,0.2)'), left: Math.round(padX), top: divY })
+  await place(foot, footSpec, footer, padX, footTop)
+
+  if (opts.watermark) {
+    layers.push({ input: watermarkSvg(W, H, W / BASE_W), left: 0, top: 0 })
+  }
+
+  return sharp(photo).composite(layers).jpeg({ quality: 90 }).toBuffer()
 }

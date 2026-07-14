@@ -5,7 +5,7 @@
  */
 import fs from 'fs'
 import path from 'path'
-import { renderSocialGraphic } from '../lib/social-image'
+import { renderSocialGraphic, renderFinishCard } from '../lib/social-image'
 
 const SRC = path.resolve(__dirname, '../../design/handoff/assets/pf-hendricken.jpg')
 const OUT = process.argv[2] ?? path.resolve(__dirname, '../../data/social-samples')
@@ -62,6 +62,15 @@ async function main() {
   )
   fs.writeFileSync(path.join(OUT, 'edge-story-focal25.jpg'), buf)
   console.log('wrote edge-story-focal25.jpg', Math.round(buf.length / 1024) + 'KB')
+
+  // Formatted finish card (the "Your finish image" hero + Photo/Full download)
+  const cardInfo = { ...info, venue: 'Gordon College', companyName: 'Triangle Timing' }
+  buf = await renderFinishCard(edgeSource, cardInfo, { watermark: true })
+  fs.writeFileSync(path.join(OUT, 'card-watermarked.jpg'), buf)
+  console.log('wrote card-watermarked.jpg', Math.round(buf.length / 1024) + 'KB')
+  buf = await renderFinishCard(source, cardInfo, { watermark: false })
+  fs.writeFileSync(path.join(OUT, 'card-clean.jpg'), buf)
+  console.log('wrote card-clean.jpg', Math.round(buf.length / 1024) + 'KB')
 }
 
 main().catch(e => { console.error(e); process.exit(1) })

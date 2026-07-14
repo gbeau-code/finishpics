@@ -10,6 +10,7 @@ export default function Banner({
   meta,
   children,
   className = '',
+  checker = false,
 }: {
   /** Small gold label above the title (e.g. "Meet"). */
   eyebrow?: string
@@ -19,6 +20,8 @@ export default function Banner({
   /** Extra content on the right side (badges, actions). */
   children?: React.ReactNode
   className?: string
+  /** Use a checkered finish-line stripe as the baseline instead of the gold bar. */
+  checker?: boolean
 }) {
   return (
     <section className={`relative overflow-hidden bg-fp-hero text-white ${className}`}>
@@ -37,8 +40,17 @@ export default function Banner({
           {children && <div className="flex items-center gap-3 shrink-0">{children}</div>}
         </div>
       </div>
-      {/* gold baseline accent */}
-      <div className="relative h-[3px] bg-fp-gold/90" />
+      {checker ? (
+        <div
+          className="relative h-3.5"
+          style={{
+            background: 'repeating-conic-gradient(#fff 0% 25%, #0A1B3D 0% 50%)',
+            backgroundSize: '14px 14px',
+          }}
+        />
+      ) : (
+        <div className="relative h-[3px] bg-fp-gold/90" />
+      )}
     </section>
   )
 }

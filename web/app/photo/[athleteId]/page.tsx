@@ -3,10 +3,8 @@ import Link from 'next/link'
 import { getAthleteWithContext, effectiveStatus } from '@/lib/database'
 import { formatRound, formatTime, formatEventLabel, formatMeetDate, formatPlace } from '@/lib/format'
 import Banner from '@/app/components/ui/Banner'
-import Downloads from './Downloads'
 import FrameGallery from './FrameGallery'
-import PhotoImage from './PhotoImage'
-import Studio from './Studio'
+import PhotoStudio from './PhotoStudio'
 import { getPurchaseBySession, confirmPurchase } from '@/lib/purchases'
 import { resolveAccess, reconcileOrderSession } from '@/lib/orders'
 import { getStripe } from '@/lib/stripe'
@@ -87,12 +85,7 @@ export default async function PhotoPage({ params, searchParams }: Props) {
 
   const meetDate = formatMeetDate(meet.date)
 
-  const previewInfo = {
-    name:       displayName,
-    eventLabel: eventName,
-    timeLabel,
-    meetName:   meet.name,
-  }
+  const socialFormats = (access?.item?.config?.socials ?? []).map(s => s.format)
 
   return (
     <div>
@@ -100,6 +93,7 @@ export default async function PhotoPage({ params, searchParams }: Props) {
       <Banner
         eyebrow={meet.name}
         title={displayName}
+        checker
         meta={
           <>
             {[athlete.team, athlete.bib && athlete.bib !== '0' ? `Bib ${athlete.bib}` : null]
@@ -130,87 +124,50 @@ export default async function PhotoPage({ params, searchParams }: Props) {
           <span className="text-fp-faint"> / {eventLabel}</span>
         </nav>
 
-        <div className="grid lg:grid-cols-[1fr_400px] gap-10">
-          {/* ── Left: the finish photo + frames ──────────────────────────── */}
-          <div className="space-y-6 min-w-0">
-            <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <p className="fp-eyebrow text-[11px] text-fp-navy not-italic">
-                  Photo-finish image
-                </p>
-                <div className="relative group">
-                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-fp-border text-fp-muted text-[10px] font-bold cursor-default select-none">?</span>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-fp-navy text-white text-xs rounded-xl px-3 py-2.5 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-fp-md">
-                    A photo-finish camera scans the finish line at high speed, building a composite image where the horizontal axis is <span className="font-semibold">time</span>, not depth. Each athlete appears at the exact moment they crossed the line.
-                  </div>
-                </div>
-              </div>
-              <div className="relative bg-fp-stage rounded-fp-card overflow-hidden shadow-fp-md">
-                <PhotoImage
-                  src={`/api/preview/${athleteId}`}
-                  alt={`Photo-finish image for ${displayName}`}
-                />
-                <div className="fp-scanline" />
-              </div>
-              <p className="mt-2 text-xs text-center text-fp-faint">
-                Watermark removed on purchase
-              </p>
-            </div>
+        <PhotoStudio
+          athleteId={athleteId}
+          rawSrc={`/api/preview/${athleteId}`}
+          cardSrc={`/api/preview/${athleteId}/card`}
+          info={{
+            name:       displayName,
+            team:       athlete.team,
+            bib:        athlete.bib,
+            eventName,
+            eventLabel,
+            roundLabel,
+            heatNum:    heat.heat_num,
+            timeLabel,
+            meetName:   meet.name,
+          }}
+          display={{ name: displayName, team: athlete.team, eventLabel, meetName: meet.name, timeLabel }}
+          hasFrames={hasFrames}
+          access={access?.source ? { caps: access.caps, socialFormats, source: access.source } : null}
+          token={sessionId}
+          orderHref={access?.source === 'order' && sessionId
+            ? `/order/confirm?session_id=${encodeURIComponent(sessionId)}`
+            : null}
+          purchaseEmail={purchase?.email ?? null}
+        />
 
-            {hasFrames && (
-              <div>
-                <p className="fp-eyebrow text-[11px] text-fp-navy not-italic mb-2">
-                  Finish-line camera — {athlete.frame_count} image{athlete.frame_count !== 1 ? 's' : ''}
-                </p>
-                <FrameGallery
-                  athleteId={athleteId}
-                  frameCount={athlete.frame_count!}
-                  lastName={athlete.last_name}
-                  token={access?.caps.frames ? (sessionId ?? null) : null}
-                />
-                <p className="mt-2 text-xs text-center text-fp-faint">
-                  {access?.caps.frames
-                    ? 'Click any frame to enlarge — then click the download button to save it'
-                    : 'Included with the Full bundle'}
-                </p>
-              </div>
-            )}
+        {/* Finish-line camera frames */}
+        {hasFrames && (
+          <div className="mt-10">
+            <p className="fp-eyebrow text-[11px] text-fp-navy not-italic mb-2">
+              Finish-line camera — {athlete.frame_count} image{athlete.frame_count !== 1 ? 's' : ''}
+            </p>
+            <FrameGallery
+              athleteId={athleteId}
+              frameCount={athlete.frame_count!}
+              lastName={athlete.last_name}
+              token={access?.caps.frames ? (sessionId ?? null) : null}
+            />
+            <p className="mt-2 text-xs text-center text-fp-faint">
+              {access?.caps.frames
+                ? 'Click any frame to enlarge — then click the download button to save it'
+                : 'Included with the Full bundle'}
+            </p>
           </div>
-
-          {/* ── Right rail: Studio (pre-purchase) or downloads (post) ────── */}
-          <div className="min-w-0">
-            {access?.source && sessionId ? (
-              <div className="bg-fp-stage rounded-fp-card p-6">
-                <Downloads
-                  athleteId={athleteId}
-                  token={sessionId}
-                  caps={access.caps}
-                  socialFormats={(access.item?.config?.socials ?? []).map(s => s.format)}
-                  hasFrames={hasFrames}
-                  orderHref={access.source === 'order'
-                    ? `/order/confirm?session_id=${encodeURIComponent(sessionId)}`
-                    : null}
-                  purchaseEmail={purchase?.email ?? null}
-                />
-              </div>
-            ) : (
-              <Studio
-                athleteId={athleteId}
-                previewSrc={`/api/preview/${athleteId}`}
-                info={previewInfo}
-                team={athlete.team}
-                display={{
-                  name:       displayName,
-                  team:       athlete.team,
-                  eventLabel,
-                  meetName:   meet.name,
-                  timeLabel,
-                }}
-                hasFrames={hasFrames}
-              />
-            )}
-          </div>
-        </div>
+        )}
 
         {/* Disclaimer */}
         <p className="mt-12 text-xs text-center text-fp-faint max-w-2xl mx-auto leading-relaxed">
